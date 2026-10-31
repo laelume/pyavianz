@@ -222,8 +222,13 @@ class BatchProcessor:
 
         outDir = os.path.join(self.annotationDir, pathNoDrive)
 
+        # Directory creation moved to saveAnnotation, so this stays a pure lookup
+        # if not os.path.isdir(outDir):
+        #     os.makedirs(outDir, exist_ok=True)
+
         return os.path.join(outDir, base + suffix)
 
+    # new function to guard against writing annotations beside the source audio
     @staticmethod
     def is_alongside_audio(filepath, outPath):
         """True if outPath would sit in the same folder as the source audio."""
@@ -632,11 +637,18 @@ class BatchProcessor:
 
         # write annotation to the annotation directory
         outPath = self.define_annotation_save_location(filename, suffix=suffix)
+
+        # Safety check: refuse any .data write into the source audio's own folder.
+        # Catches an annotation directory set to a drive/filesystem root (e.g. -asd D:\),
+        # where the mirrored path would land back beside the audio
         if suffix not in TESTMODE_SUFFIXES and self.is_alongside_audio(filename, outPath):
             raise RuntimeError(
                 f"Refusing to save {outPath}: annotations must not be written next to the "
                 f"source audio. Choose an annotation directory outside the audio folders."
             )
+
+        # Ensure directory is created (moved here from define_annotation_save_location,
+        # so has_annotations/loadFile lookups no longer create empty folders)
         os.makedirs(os.path.dirname(outPath), exist_ok=True)
         logger.debug("Saving annotation for %s to %s", filename, outPath)
         segmentList.saveJSON(outPath)

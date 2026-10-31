@@ -120,3 +120,18 @@ and the BirdNET/Kaytoo comparison scripts and figure scripts.
 
 - `.gitignore`: added `hpc/config/project.env`, `hpc/tests/_tmp/`, `hpc/pretrained/*.pth`.
 - `Changelog.md`: entry under Unreleased → Added.
+
+## Later additions
+
+- `hpc/solar/` (`solar_survey.py`, `solar_survey.sbatch`, `README.md`): runs an
+  AviaNZ recogniser from Rāpoi over folders on the VUW acoustic drives (SoLAR).
+  It copies one folder at a time to node-local `/tmp` with `smbclient`, runs AviaNZ
+  batch mode (`-c -b ... -asd`), and copies the entire recordings with detections,
+  with their annotations, to scratch. Separate from `avianz_hpc`: it uses
+  AviaNZ's own recognisers and needs no trained models. Tested locally with
+  `--local-source` and the real Kiwi (Nth Is Brown) recogniser; smbclient use on
+  Rāpoi is untested.
+- `avianz/src/core/batch_processor.py`, `avianz/AviaNZ.py` (AviaNZ core, not part
+  of `hpc/`): batch mode never writes `.data` next to the source audio. See the
+  root `Changelog.md` (Changed). The old code paths are kept as commented-out
+  `OPTION (disabled)` lines.

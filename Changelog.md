@@ -4,6 +4,7 @@ All notable changes to AviaNZ program will be documented in this file.
 
 ### Added
 - `hpc/` (avianz_hpc): Slurm workflow for Rāpoi to build datasets from AviaNZ annotations, train NN detectors/classifiers (ported from model-testing), and run sharded inference that writes reviewable `.data` files. See hpc/README.md and hpc/CHANGES.md
+- `hpc/solar/solar_survey.py` (+ `.sbatch`): runs an AviaNZ recogniser (default Kiwi (Nth Is Brown)) from Rāpoi over folders on the VUW acoustic drives (SoLAR, via smbclient), one folder at a time, keeping the entire recordings with detections plus their annotations on scratch. Resumable via done.txt; never writes to SoLAR. See hpc/solar/README.md
 - New changepoint detector replaces wavelet filter as the default non-NN recognition method (wavelet filters still work but considered deprecated)
 - Syllable-level detection: trainable filters via the new changepoint pipeline, one example filter for LSK syllables included, and parameter ranges for non-specific detectors adapted
 - New method for wind noise removal by polynomial fitting (OLS or robust options available)

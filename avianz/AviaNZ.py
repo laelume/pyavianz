@@ -65,6 +65,9 @@ import click
 @click.option('--subset/--no-subset', default=False, help='Enable time-limited subset processing')
 @click.option('--intermittent/--no-intermittent', default=False, help='Enable intermittent sampling')
 @click.option('--merge-syllables/--no-merge-syllables', default=False, help='Enable syllable merging')
+# Annotation save location: batch mode no longer saves alongside source audio, so the
+# default changed from "beside each .wav" to <input dir>_annotations (see batch_processor.py)
+# @click.option('-asd', '--annotation-save-dir', type=click.Path(), default=None, help='Custom directory to save annotation .data files into, instead of alongside source audio')
 @click.option('-asd', '--annotation-save-dir', type=click.Path(), default=None, help='Directory to save annotation .data files into, mirroring the audio folder tree (default: <input dir>_annotations). Batch mode never saves alongside source audio')
 @click.option('--gpu/--no-gpu', default=True, help='Allow GPU usage for NN inference if available; prompts for CPU fallback confirmation if not')
 @click.argument('command', nargs=-1)
