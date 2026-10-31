@@ -52,6 +52,14 @@ SAMPLES_PER_PAGE_16KHZ = 900 * 16000
 MIN_FILE_SIZE_BYTES = 1000
 SAMPLES_PER_300S_PAGE = 300
 
+# Batch annotations never go next to the source audio, so a run can never
+# overwrite <audio>.data (which may hold manual or reviewed annotations).
+# Without a custom directory they go to a sibling of the analysed folder:
+#   <analysed folder> + DEFAULT_ANNOTATION_DIR_SUFFIX
+DEFAULT_ANNOTATION_DIR_SUFFIX = "_annotations"
+# Scratch outputs of recogniser testing (training.py reads them from beside the audio)
+TESTMODE_SUFFIXES = (".tmpdata", ".tmp2data")
+
 class BatchProcessorCallbacks:
     """Abstract interface for user interaction callbacks - allows different implementations for CLI vs GUI"""
     
@@ -87,10 +95,10 @@ class BatchProcessor:
 
         """Added support for annotaiton directory saving and gpu usage
 
-        annotationSaveDir: optional custom directory to save annotation .data files into,
-                            instead of alongside each source audio file. Passed through to
-                            saveAnnotation at the point where results get written for each
-                            processed file.
+        annotationSaveDir: directory to save annotation .data files into, mirroring the
+                            source folder tree. If None, defaults to a sibling of the
+                            analysed folder (<directory>_annotations). Annotations are
+                            never saved alongside the source audio.
         useGpu:             whether GPU usage is permitted for NN inference, passed through
                             to configure_gpu_memory when NNmodel is constructed. If False,
                             forces cpu device without attempting cuda or prompting.
@@ -178,27 +186,34 @@ class BatchProcessor:
 
 
     def define_annotation_save_location(self, filepath, suffix=".data"):
-        """Resolves output path for saved annotations. Default lives next to audio files; uses custom directory if specified.
+        """Resolves the path where annotations for filepath are read from and saved to.
 
         filepath: path to the source audio file being annotated
-        suffix:   file suffix to append to the resolved output path 
-                  (".data" by default, overridden to ".tmpdata"/".tmp2data" 
+        suffix:   file suffix to append to the resolved output path
+                  (".data" by default, overridden to ".tmpdata"/".tmp2data"
                   in testmode via saveAnnotation)
-    
-        Default (no custom annotation directory): saves alongside the source audio
-        file using its full path, which inherently avoids collisions between
-        identically-named files in different folders.
-        
-        Custom directory (self.annotationDir set): mirrors wav tree structure
-        as organizational strategy for annotation files. 
+
+        Annotation directory (self.annotationDir, always set by process_files):
+        mirrors the wav tree structure under that directory. This is the only
+        location used for .data files.
+
+        Alongside source audio: DISABLED so batch runs cannot overwrite existing
+        <audio>.data files. Kept below, commented out, for reference.
+
+        Pure path computation; directories are created by saveAnnotation.
         """
         base = os.path.splitext(os.path.basename(filepath))[0]
 
-        # FALLBACK: default behaviour, save alongside source audio file using its
-        # full path, inherently collision-proof since the full path is preserved
-        if not self.annotationDir:
+        # Testmode scratch files stay beside the audio: training.py reads them
+        # from there, and they are never .data files.
+        if suffix in TESTMODE_SUFFIXES:
             return filepath + suffix
 
+        # OPTION (disabled): save alongside source audio file using its full path
+        # if not self.annotationDir:
+        #     return filepath + suffix
+
+        # OPTION (active): annotation directory mirroring the wav tree structure
         sourceDir = os.path.abspath(os.path.dirname(filepath))
         drive, pathNoDrive = os.path.splitdrive(sourceDir)
         # strip leading separator so os.path.join doesn't treat this as an
@@ -206,12 +221,14 @@ class BatchProcessor:
         pathNoDrive = pathNoDrive.lstrip(os.sep).lstrip("/")
 
         outDir = os.path.join(self.annotationDir, pathNoDrive)
-        
-        # Ensure directory is created
-        if not os.path.isdir(outDir):
-            os.makedirs(outDir, exist_ok=True)
 
         return os.path.join(outDir, base + suffix)
+
+    @staticmethod
+    def is_alongside_audio(filepath, outPath):
+        """True if outPath would sit in the same folder as the source audio."""
+        return os.path.normcase(os.path.abspath(os.path.dirname(outPath))) == \
+               os.path.normcase(os.path.abspath(os.path.dirname(filepath)))
 
     def process_files(self):
         """Main processing method. Returns 0 on success, 1 on error."""
@@ -226,8 +243,13 @@ class BatchProcessor:
 
         self.NNDicts = self.ConfigLoader.getNNmodels(self.FilterDicts, self.filtersDir, self.species)
         
-        # Setup custom annotation directory (optional) 
-        self.annotationDir = self.annotationSaveDir
+        # Setup annotation directory: custom if given, else a sibling of the
+        # analysed folder. Never alongside the source audio.
+        if self.annotationSaveDir:
+            self.annotationDir = self.annotationSaveDir
+        else:
+            self.annotationDir = os.path.normpath(os.path.abspath(str(self.dirName))) + DEFAULT_ANNOTATION_DIR_SUFFIX
+        print(f"Annotations will be saved under: {self.annotationDir}")
         
         allsoundfiles = self.get_files_to_process()
         total = len(allsoundfiles)
@@ -593,25 +615,32 @@ class BatchProcessor:
             print("%d segments loaded from .data file" % len(self.segments))
 
     def saveAnnotation(self, filename, segmentList, suffix=".data"):
-        """Generates default batch-mode metadata and saves segmentList to a .data file. Saves to custom location if specified.        
-        
-        Resolves the output path via define_annotation_save_location, which handles the
-        fallback to source-adjacent saving when no custom directory was supplied.
+        """Generates default batch-mode metadata and saves segmentList to the annotation directory.
+
+        Resolves the output path via define_annotation_save_location. Refuses to
+        write a .data file into the source audio's folder, so existing
+        <audio>.data annotations can never be overwritten by a batch run.
         """
         segmentList.metadata["Operator"] = "Auto"
         segmentList.metadata["Reviewer"] = ""
         segmentList.metadata["Duration"] = self.sp.get_duration()
         segmentList.metadata["noiseLevel"] = None
         segmentList.metadata["noiseTypes"] = []
-        
-        # write annotation to wav source location; safe backup for now
-        segmentList.saveJSON(str(filename) + suffix)
-        
-        # write annotation to custom location
+
+        # OPTION (disabled): write annotation to wav source location ("safe backup")
+        # segmentList.saveJSON(str(filename) + suffix)
+
+        # write annotation to the annotation directory
         outPath = self.define_annotation_save_location(filename, suffix=suffix)
+        if suffix not in TESTMODE_SUFFIXES and self.is_alongside_audio(filename, outPath):
+            raise RuntimeError(
+                f"Refusing to save {outPath}: annotations must not be written next to the "
+                f"source audio. Choose an annotation directory outside the audio folders."
+            )
+        os.makedirs(os.path.dirname(outPath), exist_ok=True)
         logger.debug("Saving annotation for %s to %s", filename, outPath)
         segmentList.saveJSON(outPath)
-        
+
         return 1
 
 

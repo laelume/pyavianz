@@ -65,7 +65,7 @@ import click
 @click.option('--subset/--no-subset', default=False, help='Enable time-limited subset processing')
 @click.option('--intermittent/--no-intermittent', default=False, help='Enable intermittent sampling')
 @click.option('--merge-syllables/--no-merge-syllables', default=False, help='Enable syllable merging')
-@click.option('-asd', '--annotation-save-dir', type=click.Path(), default=None, help='Custom directory to save annotation .data files into, instead of alongside source audio')
+@click.option('-asd', '--annotation-save-dir', type=click.Path(), default=None, help='Directory to save annotation .data files into, mirroring the audio folder tree (default: <input dir>_annotations). Batch mode never saves alongside source audio')
 @click.option('--gpu/--no-gpu', default=True, help='Allow GPU usage for NN inference if available; prompts for CPU fallback confirmation if not')
 @click.argument('command', nargs=-1)
 
@@ -198,11 +198,13 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
 
                 wind_str = "OLS wind filter (recommended)" if wind else "None"
 
-                # Confirms user-defined custom annotation direrctory
+                # Confirms annotation directory (batch annotations never go alongside source audio)
                 if annotation_save_dir:
                     print(f"Annotations will be saved to custom directory: {annotation_save_dir}")
                 else:
-                    print("Annotations will be saved alongside source audio files (default)")
+                    # OPTION (disabled): save alongside source audio files
+                    # print("Annotations will be saved alongside source audio files (default)")
+                    print(f"Annotations will be saved to default directory: {os.path.normpath(os.path.abspath(sdir1))}_annotations")
 
                 # Confirms user-selected GPU setting
                 print(f"GPU usage: {'enabled (falls back to CPU prompt if unavailable)' if gpu else 'disabled, forcing CPU'}")

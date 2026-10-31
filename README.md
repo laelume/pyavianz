@@ -38,8 +38,13 @@ git clone https://github.com/laelume/avianz.git && cd avianz && pip install -e .
 # CLI Command Line Interface
 ```
 cd avianz && 
-python AviaNZ.py -c -b -d "Z:\some_top_level\collection\of\audio_files\YYYYMMDD" -r "Kiwi (Nth Is Brown)" -w
+python AviaNZ.py -c -b -d "Z:\some_top_level\collection\of\audio_files\YYYYMMDD" -r "Kiwi (Nth Is Brown)" -w -asd "D:\avianz_annotations"
 ```
+
+Batch mode never writes `.data` files next to the source audio, so existing annotations there are never overwritten. Results go to the `-asd` directory, mirroring the audio folder tree:
+`-asd D:\out` + `Z:\survey\site1\rec.wav` → `D:\out\survey\site1\rec.data`.
+Without `-asd`, they go to `<input dir>_annotations` beside the input folder, which must be writable. Existing `rec.wav.data` files beside the audio are not read or merged by batch runs. Note: the GUI review windows still only open `<audio>.data` beside the audio, so they don't yet read batch results from the annotation directory.
+
 # GUI Installation
 
 ## Windows

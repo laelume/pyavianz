@@ -3,6 +3,7 @@ All notable changes to AviaNZ program will be documented in this file.
 ## Unreleased
 
 ### Added
+- `hpc/` (avianz_hpc): Slurm workflow for Rāpoi to build datasets from AviaNZ annotations, train NN detectors/classifiers (ported from model-testing), and run sharded inference that writes reviewable `.data` files. See hpc/README.md and hpc/CHANGES.md
 - New changepoint detector replaces wavelet filter as the default non-NN recognition method (wavelet filters still work but considered deprecated)
 - Syllable-level detection: trainable filters via the new changepoint pipeline, one example filter for LSK syllables included, and parameter ranges for non-specific detectors adapted
 - New method for wind noise removal by polynomial fitting (OLS or robust options available)
@@ -13,6 +14,7 @@ All notable changes to AviaNZ program will be documented in this file.
 - Additional spectrogram normalization options, including PCEN
 
 ### Changed
+- Batch processing (CLI and GUI) never writes .data files next to the source audio, so existing `<audio>.data` annotations cannot be overwritten. Annotations go to `-asd/--annotation-save-dir`, or by default to `<input dir>_annotations`, mirroring the audio folder tree. The old "alongside source audio" save path and the unconditional "safe backup" sidecar write are kept in `batch_processor.py` as commented-out options; `saveAnnotation` refuses any .data write into the audio's own folder. Consequence: existing sidecar annotations are no longer loaded into or merged with batch output. Recogniser-testing scratch files (.tmpdata/.tmp2data) still go beside the audio
 - PyQt6 instead of PyQt5
 - Training will now include subdirectories when searching for data
 - Node selection in training faster, more stable, and produces ROCs more closely consistent with testing/processing

@@ -68,4 +68,9 @@ yiluo_kiwi_morepork_annotations_837pm/
 TODO.md
 deprecated_setup.py
 
+model-testing/
 
+# hpc/ (avianz_hpc): personal config, test scratch, model weights
+hpc/config/project.env
+hpc/tests/_tmp/
+hpc/pretrained/*.pth

@@ -1,0 +1,22 @@
+# Headless dependencies for hpc/avianz_hpc on Rāpoi (Linux, Python 3.10-3.12).
+# The AviaNZ GUI stack (PyQt6, pyqtgraph) and TensorFlow are deliberately absent:
+# avianz_hpc imports only AviaNZ's spectrogram/annotation modules from the repo.
+
+# AviaNZ runtime (versions as in the repository pyproject.toml)
+numpy==2.1.3
+scipy==1.15.3
+pyFFTW==0.15.0
+resampy==0.4.3
+soundfile==0.13.1
+Pillow
+
+# Training / inference (from model-testing/requirements.txt)
+torch>=2.0.0
+timm>=0.9
+scikit-learn==1.5.2
+matplotlib==3.10.3
+tqdm
+pandas
+
+# Only needed for --model-type ast
+# transformers>=4.30.0
