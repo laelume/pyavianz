@@ -80,8 +80,19 @@ def smb_quote(path):
     return f'"{path}"'
 
 
+# SoLAR is read-only for this script: only these smbclient commands may be sent.
+# lcd changes the LOCAL (Rāpoi) directory; mget copies FROM SoLAR TO Rāpoi.
+# Anything that writes to the share (put, mput, mkdir, del, rm, rename, ...) is refused.
+READ_ONLY_SMB_COMMANDS = {"prompt", "recurse", "lcd", "cd", "mask", "mget", "ls", "du"}
+
+
 def smbclient(share, commands, args, log_file=None):
     """Run smbclient commands against a share; raise on failure."""
+    # Safety check: refuse any command that could modify SoLAR, before connecting
+    for c in commands:
+        verb = c.split(None, 1)[0].lower()
+        if verb not in READ_ONLY_SMB_COMMANDS:
+            raise ValueError(f"Refusing smbclient command '{c}': only read-only commands are allowed")
     cmd = ["smbclient", f"//{args.host}/{share}"]
     if args.auth_file:
         cmd += ["-A", args.auth_file]

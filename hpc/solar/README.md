@@ -8,7 +8,9 @@ their annotations, on Rāpoi scratch.
 SoLAR is not mounted on Rāpoi, so it works one folder at a time:
 `smbclient` copy → AviaNZ batch run → keep recordings with detections →
 delete the staged copy → record the folder in `done.txt`. Nothing is written
-to SoLAR. Resubmitting the job skips finished folders and retries failed ones.
+to SoLAR. The script only sends read commands to the drives (`ls`, `du`, `cd`,
+`mget`, ...), and refuses any other `smbclient` command, such as `put`, `mput`,
+`mkdir` or `del`, before connecting (`READ_ONLY_SMB_COMMANDS` in `solar_survey.py`). Resubmitting the job skips finished folders and retries failed ones.
 
 ## One-time setup
 
