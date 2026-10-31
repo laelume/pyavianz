@@ -58,6 +58,31 @@ squeue -u $USER
 tail -f ~/solar-survey_<jobid>.out
 ```
 
+### Watching progress
+
+At the start the job measures every listed folder (cached in `sizes.json`), so
+progress and the estimated finish time are based on the amount of audio, not
+the number of folders. From the login node:
+
+```bash
+python ~/avianz/hpc/solar/solar_survey.py status            # one snapshot
+python ~/avianz/hpc/solar/solar_survey.py status --watch    # refresh every 60 s; Ctrl+C to stop
+```
+```
+[################------------------------]  41.3%   elapsed 3h05m   ETA 4h24m (Sun 02 Nov 03:12)
+folders: 2 done, 0 failed, of 5 this run (+0 done in earlier runs)
+recordings: 386 processed, 12 kept
+now: [3/5] ECS_acoustic_02/Remutaka20/site3: detecting, file 57/193
+updated 1m ago   job 123456
+```
+The job output also prints a `progress` line every 5 minutes. Downloads give no
+progress updates, so a large folder can show "downloading" for a while. If
+`updated` gets older than 30 minutes, check `squeue -u $USER`. The ETA assumes
+the remaining audio processes at the average rate so far, so it settles after
+the first folder.
+
+### Options
+
 Options go after the list, e.g. `--min-certainty 90` (keep only stronger
 detections), `--wind` (AviaNZ wind filter), `-r "<other recogniser>"`.
 The job runs on the `parallel` partition (CPU, up to 10 days), one folder after

@@ -131,6 +131,11 @@ and the BirdNET/Kaytoo comparison scripts and figure scripts.
   AviaNZ's own recognisers and needs no trained models. Tested locally with
   `--local-source` and the real Kiwi (Nth Is Brown) recogniser; smbclient use on
   Rāpoi is untested.
+  - Read-only guard: only `ls`, `du`, `cd`, `recurse`, `prompt`, `mask`, `lcd` and `mget`
+    may be sent to SoLAR (`READ_ONLY_SMB_COMMANDS`); anything else is refused before connecting.
+  - Progress: folder sizes are measured up front (`sizes.json`), AviaNZ output is
+    streamed for per-file progress, and `status.json` is kept up to date;
+    `solar_survey.py status [--watch]` shows a progress bar with an ETA.
 - `avianz/src/core/batch_processor.py`, `avianz/AviaNZ.py` (AviaNZ core, not part
   of `hpc/`): batch mode never writes `.data` next to the source audio. See the
   root `Changelog.md` (Changed). The old code paths are kept as commented-out
