@@ -3,6 +3,7 @@ All notable changes to AviaNZ program will be documented in this file.
 ## Unreleased
 
 ### Added
+- `perch_detector/`: self-contained Perch v2 embedding pipeline (embed, train with held-out evaluation, detect, similarity search, SoLAR survey on Rāpoi). Doesn't use AviaNZ code or its annotation format; trains from call clips, no-call audio, and/or Audacity-labelled recordings. See perch_detector/README.md and perch_detector/CHANGELOG.md
 - `hpc/` (avianz_hpc): Slurm workflow for Rāpoi to build datasets from AviaNZ annotations, train NN detectors/classifiers (ported from model-testing), and run sharded inference that writes reviewable `.data` files. See hpc/README.md and hpc/CHANGES.md
 - `hpc/solar/solar_survey.py` (+ `.sbatch`): runs an AviaNZ recogniser (default Kiwi (Nth Is Brown)) from Rāpoi over folders on the VUW acoustic drives (SoLAR, via smbclient), one folder at a time, keeping the entire recordings with detections plus their annotations on scratch. Resumable via done.txt; never writes to SoLAR. See hpc/solar/README.md
 - New changepoint detector replaces wavelet filter as the default non-NN recognition method (wavelet filters still work but considered deprecated)

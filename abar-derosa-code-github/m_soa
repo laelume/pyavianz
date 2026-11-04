@@ -1,0 +1,54 @@
+################ data 
+### alpha = global offset / intercept
+### beta_sex = 2 levels, male female 
+### sex = two dimensions array with 1 as female and 2 as male {iota x max(nu[i])}
+### iota = integer, number of populations // sampling events | input
+### nu = one dimension array of integers of length iota, number of known individuals per population | input
+### kappa = one dimension array of integers of length iota, number of sampling events per population | input
+### lambda = three dimensions array {iota x nu[i] x kappa[i]}, rate of vocalisations per sampling event per individual per population 
+### eta = three dimensions array {iota x nu[i] x kappa[i]}, number of vocalisations per sampling event per individual per population | input
+### rho = two  dimensions array prob of recruitment of individual in population i of sex s 
+### gamma = recruitment bernoullian variable based on rho
+### psi = two dimensions array, {iota x 2 (sex)} contains the number of individuals in population i  of sex s
+### mu = rate of vocalisation for recuited individuals // counterpart of lambda
+### theta = number of vocalisation for recuited individuals // counterpart of eta
+### omicron = real number of vocalisations per population, per sex per sampling event | input
+### zeta = estimated number of individuals per population per sex
+
+model{
+########### covariates
+	
+	alpha~dnorm(0,1e-3)
+	for(s in 1:2) 
+	{
+		beta_sex[s]~dnorm(0,1e-3)
+		beta_toy[s]~dnorm(0,1e-3)
+	}
+	
+	for(i in 1:iota)
+	{
+		beta_occ[i]~dnorm(0,1e-3)
+	}
+	for(i in 1:3)
+	{
+		beta_pop[i]~dnorm(0,1e-3)
+	}
+	
+	for(q in 1:6)
+	{
+		beta_weather[q]~dnorm(0,1e-3)
+	}
+	
+	for(i in 1:iota)
+	{
+		for(n in 1:nu[i])
+		{
+			for(k in 1:kappa[i])
+			{
+				logit(lambda[i,n,k])<-alpha+beta_sex[sex[i,n]]+beta_toy[toy[i]]+beta_weather[1]*lot[i,k]+beta_pop[qp[i]]+beta_occ[i]+beta_weather[2]*hit[i,k]+beta_weather[3]*ws[i,k]+beta_weather[4]*rh[i,k]+beta_weather[5]*ap[i,k]+beta_weather[6]*ml[i,k]
+				eta[i,n,k]~dpois(lambda[i,n,k])
+			}
+		}
+	}
+	
+}

@@ -30,6 +30,7 @@ Folder list (one per line, '#' comments allowed), first component is the share:
 
 Commands:
   python solar_survey.py list ECS_acoustic_02/Remutaka20   # list subfolders (to build a list)
+  python solar_survey.py files ECS_acoustic_01 files.csv    # every file, recursively, to a CSV
   python solar_survey.py run folders.txt                    # process every folder in the list
   python solar_survey.py status --watch                     # progress bar + ETA of the current run
 """
@@ -89,8 +90,8 @@ def smb_quote(path):
 READ_ONLY_SMB_COMMANDS = {"prompt", "recurse", "lcd", "cd", "mask", "mget", "ls", "du"}
 
 
-def smbclient(share, commands, args, log_file=None):
-    """Run smbclient commands against a share; raise on failure."""
+def smbclient(share, commands, args, log_file=None, strict=True):
+    """Run smbclient commands against a share; raise on failure (unless strict=False)."""
     # Safety check: refuse any command that could modify SoLAR, before connecting
     for c in commands:
         verb = c.split(None, 1)[0].lower()
@@ -107,7 +108,13 @@ def smbclient(share, commands, args, log_file=None):
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(f"$ smbclient //{args.host}/{share} -c '{'; '.join(commands)}'\n{proc.stdout}\n")
     errors = re.findall(r"NT_STATUS_[A-Z_]+", proc.stdout)
-    if proc.returncode != 0 or errors:
+    if not strict:
+        # tolerate unreadable subfolders only; a failed logon or missing share still raises
+        errors = [e for e in errors if e not in ("NT_STATUS_ACCESS_DENIED", "NT_STATUS_NO_SUCH_FILE")]
+        for line in proc.stdout.splitlines():
+            if "NT_STATUS_" in line and not errors:
+                print(f"warning: {line.strip()}", file=sys.stderr)
+    if errors or (strict and proc.returncode != 0):
         raise RuntimeError(f"smbclient failed ({', '.join(sorted(set(errors))) or proc.returncode})")
     return proc.stdout
 
@@ -124,6 +131,23 @@ def remote_subfolders(spec, args):
         if m and "D" in m.group(2) and m.group(1) not in (".", ".."):
             names.append(m.group(1))
     return sorted(names)
+
+
+def remote_files(spec, args):
+    """Every file under a SoLAR folder, recursively, as (path from the share root, bytes)."""
+    share, path = split_spec(spec)
+    out = smbclient(share, [f"cd {smb_quote(path)}" if path else "cd /", "recurse ON", "ls"],
+                    args, strict=False)
+    files = []
+    folder = path  # the first block of a recursive ls is the starting folder, with no header
+    for line in out.splitlines():
+        if line.startswith("\\"):  # header of each subfolder, e.g. \Remutaka20\Site 1
+            folder = line.strip().strip("\\").replace("\\", "/")
+            continue
+        m = LS_LINE.match(line)
+        if m and "D" not in m.group(2):
+            files.append((f"{folder}/{m.group(1)}" if folder else m.group(1), int(m.group(3))))
+    return sorted(files)
 
 
 def remote_size(spec, args):
@@ -525,6 +549,20 @@ def cmd_list(args):
         print(f"{args.folder.rstrip('/')}/{name}")
 
 
+def cmd_files(args):
+    if args.auth_file:
+        check_auth_file(args.auth_file)
+    share, _ = split_spec(args.folder)
+    files = remote_files(args.folder, args)
+    with open(args.csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["name", "path", "bytes"])
+        for path, size in files:
+            full = f"{share}/{path}"
+            w.writerow([full.replace("/", "_"), full, size])
+    print(f"{len(files)} files written to {args.csv}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--host", default=HOST)
@@ -537,6 +575,10 @@ def main(argv=None):
 
     pl = sub.add_parser("list", help="print the subfolders of a SoLAR folder as list entries")
     pl.add_argument("folder", help="e.g. ECS_acoustic_02/Remutaka20")
+
+    pf = sub.add_parser("files", help="write every file under a SoLAR folder (recursively) to a CSV")
+    pf.add_argument("folder", help="e.g. ECS_acoustic_01 or ECS_acoustic_01/Remutaka20")
+    pf.add_argument("csv", help="CSV to write: name (path joined with _), path, bytes")
 
     ps = sub.add_parser("status", help="show a progress bar and ETA for a run (safe on the login node)")
     ps.add_argument("-r", "--recogniser", default="Kiwi (Nth Is Brown)")
@@ -564,7 +606,7 @@ def main(argv=None):
     pr.add_argument("--local-source", default=None,
                     help="Read <dir>/<share>/<path> from a local folder instead of SoLAR (testing)")
     args = p.parse_args(argv)
-    {"run": cmd_run, "list": cmd_list, "status": cmd_status}[args.command](args)
+    {"run": cmd_run, "list": cmd_list, "files": cmd_files, "status": cmd_status}[args.command](args)
 
 
 if __name__ == "__main__":

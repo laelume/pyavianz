@@ -102,6 +102,23 @@ with the same command to continue.
 | `done.txt`, `failed.txt` | finished folders; failed folders with the reason |
 | `logs/` | smbclient and AviaNZ output per folder |
 
+## Audacity label copies
+
+`data_to_audacity.py` writes an Audacity label file for every `.data` file into a
+separate folder tree. `rec.wav.data` becomes `rec.txt`, and the originals are not
+modified. In Audacity, open the recording, then *File → Import → Labels…*.
+
+```bash
+python ~/avianz/hpc/solar/data_to_audacity.py /nfs/scratch/$USER/solar_survey/Kiwi_Nth_Is_Brown
+#  -> /nfs/scratch/$USER/solar_survey/Kiwi_Nth_Is_Brown_audacity/<share>/<folder>/<recording>.txt
+```
+Each label reads `Species | calltype | certainty`. If the annotation has a
+frequency range, it's added as Audacity's spectral selection; full-band
+segments get none. Options: `-o DIR`, `--species "Kiwi (Nth Is Brown)"`,
+`--min-certainty 90`, `--no-freq`. The `annotations/` record folder in the
+results is skipped by default, because the kept recordings already have their
+annotations beside them.
+
 ## Not yet verified on Rāpoi
 
 Tested locally with `--local-source`, which substitutes a local folder for

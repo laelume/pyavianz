@@ -1,0 +1,84 @@
+################ data 
+### alpha = global offset / intercept
+### beta_sex = 2 levels, male female 
+### sex = two dimensions array with 1 as female and 2 as male {iota x max(nu[i])}
+### iota = integer, number of populations // sampling events | input
+### nu = one dimension array of integers of length iota, number of known individuals per population | input
+### kappa = one dimension array of integers of length iota, number of sampling events per population | input
+### lambda = three dimensions array {iota x nu[i] x kappa[i]}, rate of vocalisations per sampling event per individual per population 
+### eta = three dimensions array {iota x nu[i] x kappa[i]}, number of vocalisations per sampling event per individual per population | input
+### rho = two  dimensions array prob of recruitment of individual in population i of sex s 
+### gamma = recruitment bernoullian variable based on rho
+### psi = two dimensions array, {iota x 2 (sex)} contains the number of individuals in population i  of sex s
+### mu = rate of vocalisation for recuited individuals // counterpart of lambda
+### theta = number of vocalisation for recuited individuals // counterpart of eta
+### omicron = real number of vocalisations per population, per sex per sampling event | input
+### zeta = estimated number of individuals per population per sex
+
+model{
+########### covariates
+	
+	alpha~dnorm(0,1e-3)
+	for(s in 1:2) 
+	{
+		beta_sex[s]~dnorm(0,1e-3)
+	}
+	
+	for(i in 1:(delta+iota))
+	{
+		beta_occ[i]~dnorm(0,1e-3)
+	}
+	for(q in 1:6)
+	{
+		beta_weather[q]~dnorm(0,1e-3)
+	}
+	
+	for(i in 1:iota)
+	{
+		for(n in 1:nu[i])
+		{
+			for(k in 1:kappa[i])
+			{
+				logit(lambda[i,n,k])<-alpha+beta_sex[sex[i,n]]+beta_weather[1]*lot[i,k]+beta_occ[i]+beta_weather[2]*hit[i,k]+beta_weather[3]*ws[i,k]+beta_weather[4]*rh[i,k]+beta_weather[5]*ap[i,k]+beta_weather[6]*ml[i,k]
+				eta[i,n,k]~dpois(lambda[i,n,k])
+			}
+		}
+	}
+	
+	for(i in 1:(iota+delta))
+	{
+		for(s in 1:2)
+		{
+			rho[i,s]~dbeta(1,1)
+			for(w in 1:omega)
+			{
+				xi[i,s,w]~dbern(rho[i,s])
+				for(k in 1:kappa[i])
+				{
+					logit(mu[i,w,k,s])<-alpha+beta_sex[s]+beta_weather[1]*lot[i,k]+beta_occ[i]+beta_weather[2]*hit[i,k]+beta_weather[3]*ws[i,k]+beta_weather[4]*rh[i,k]+beta_weather[5]*ap[i,k]+beta_weather[6]*ml[i,k]
+					theta[i,w,k,s]~dpois(mu[i,w,k,s]*xi[i,s,w])
+					
+				}
+			}
+		}
+	}
+	
+	for(i in 1:(iota+delta))
+	{
+		for(s in 1:2)
+		{
+			for(k in 1:kappa[i])
+			{
+		omicron[i,s,k]~dsum(theta[i,1,k,s],theta[i,2,k,s],theta[i,3,k,s],theta[i,4,k,s],theta[i,5,k,s],theta[i,6,k,s],theta[i,7,k,s],theta[i,8,k,s],theta[i,9,k,s],theta[i,10,k,s],theta[i,11,k,s],theta[i,12,k,s],theta[i,13,k,s],theta[i,14,k,s],theta[i,15,k,s],theta[i,16,k,s],theta[i,17,k,s],theta[i,18,k,s],theta[i,19,k,s],theta[i,20,k,s],theta[i,21,k,s],theta[i,22,k,s],theta[i,23,k,s],theta[i,24,k,s],theta[i,25,k,s],theta[i,26,k,s],theta[i,27,k,s],theta[i,28,k,s],theta[i,29,k,s],theta[i,30,k,s],theta[i,31,k,s],theta[i,32,k,s],theta[i,33,k,s],theta[i,34,k,s],theta[i,35,k,s],theta[i,36,k,s],theta[i,37,k,s],theta[i,38,k,s],theta[i,39,k,s],theta[i,40,k,s],theta[i,41,k,s],theta[i,42,k,s],theta[i,43,k,s],theta[i,44,k,s],theta[i,45,k,s],theta[i,46,k,s],theta[i,47,k,s],theta[i,48,k,s],theta[i,49,k,s],theta[i,50,k,s],theta[i,51,k,s],theta[i,52,k,s],theta[i,53,k,s],theta[i,54,k,s],theta[i,55,k,s],theta[i,56,k,s],theta[i,57,k,s],theta[i,58,k,s],theta[i,59,k,s],theta[i,60,k,s],theta[i,61,k,s],theta[i,62,k,s],theta[i,63,k,s],theta[i,64,k,s],theta[i,65,k,s],theta[i,66,k,s],theta[i,67,k,s],theta[i,68,k,s],theta[i,69,k,s],theta[i,70,k,s],theta[i,71,k,s],theta[i,72,k,s],theta[i,73,k,s],theta[i,74,k,s],theta[i,75,k,s],theta[i,76,k,s],theta[i,77,k,s],theta[i,78,k,s],theta[i,79,k,s],theta[i,80,k,s],theta[i,81,k,s],theta[i,82,k,s],theta[i,83,k,s],theta[i,84,k,s],theta[i,85,k,s],theta[i,86,k,s],theta[i,87,k,s],theta[i,88,k,s],theta[i,89,k,s],theta[i,90,k,s],theta[i,91,k,s],theta[i,92,k,s],theta[i,93,k,s],theta[i,94,k,s],theta[i,95,k,s],theta[i,96,k,s],theta[i,97,k,s],theta[i,98,k,s],theta[i,99,k,s],theta[i,100,k,s])
+			}
+		}
+	}
+	
+	for(i in 1:(iota+delta))
+	{
+		for(s in 1:2)
+		{
+		zeta[i,s]<-sum(xi[i,s,])+psi[i,s]
+		}
+	}
+}

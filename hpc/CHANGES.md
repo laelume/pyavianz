@@ -136,6 +136,18 @@ and the BirdNET/Kaytoo comparison scripts and figure scripts.
   - Progress: folder sizes are measured up front (`sizes.json`), AviaNZ output is
     streamed for per-file progress, and `status.json` is kept up to date;
     `solar_survey.py status [--watch]` shows a progress bar with an ETA.
+- `hpc/recogniser/train_recogniser.py` (+ `README.md`): command-line (no GUI) port
+  of the "Build recogniser" wizard's training. It uses the same core calls
+  (`SegmentList.exportGT`, `WaveletSegment.waveletSegment_trainChp` /
+  `waveletSegment_train`) and the same default parameters. Call-type clustering is
+  replaced by `--calltype`, and clicking the ROC curve by a rule (default: nearest
+  the top-left; or `--max-fpr`, `--threshold`). It works on a copy of the
+  training data, refuses to overwrite an existing recogniser, and writes a
+  training log with every setting. Tested locally on a stand-in set: training runs,
+  and the output loads and detects in AviaNZ's batch processor.
+  - `data_to_audacity.py`: copies AviaNZ `.data` annotations to Audacity label
+    files (`start end label`, plus spectral-selection lines for frequency boxes)
+    in a separate folder tree; the originals are not modified. Standard library only.
 - `avianz/src/core/batch_processor.py`, `avianz/AviaNZ.py` (AviaNZ core, not part
   of `hpc/`): batch mode never writes `.data` next to the source audio. See the
   root `Changelog.md` (Changed). The old code paths are kept as commented-out

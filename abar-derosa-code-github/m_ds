@@ -1,0 +1,35 @@
+
+model{
+########### covariates
+	
+	
+	
+	for(s in 1:2)
+	{
+		alpha[s]~dnorm(0,1e-3)
+		psi[s]~dbeta(1,1)		
+		for(i in 1:iota)
+		{
+			for(w in 1:omega)
+			{
+				xi[w,s,i]~dbern(psi[s])
+				delta[w,s,i]~dunif(0,200)
+
+				lp[w,s,i]<- -alpha[s]*(delta[w,s,i]*delta[w,s,i])
+				p[w,s,i]<-exp(lp[w,s,i])
+				mu[w,s,i]<-p[w,s,i]*xi[w,s,i]
+				theta[w,s,i]~dbern(mu[w,s,i])
+			}
+		}
+	}
+
+	for(s in 1:2)
+	{
+		for(i in 1:iota)
+		{
+		zeta[s,i]<-sum(xi[1:omega,s,i])
+		}
+		tau[s]<-sum(zeta[s,])/iota
+	}
+	
+}

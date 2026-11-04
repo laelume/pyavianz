@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAV Trimmer</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --fg: #1d2329; --muted: #66707a; --border: #d9dee3;
+  --accent: #1f6feb; --accent-fg: #fff; --warn: #b42318;
+  --wave-bg: #fbfcfd; --wave: #2f5d8a; --axis: #7a848e; --dim: rgba(20, 30, 40, .45); --handle: #e8590c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --card: #1a1f25; --fg: #e6e9ec; --muted: #9aa4ae; --border: #2c333b;
+    --accent: #4c8dff; --accent-fg: #fff; --warn: #ff6b5b;
+    --wave-bg: #14181d; --wave: #7fb2e5; --axis: #7c8690; --dim: rgba(0, 0, 0, .55); --handle: #ff8a3d;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--fg); }
+header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 16px; display: grid; gap: 8px; }
+h1 { font-size: 16px; margin: 0 8px 0 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+button { font: inherit; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button.primary, button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+button:disabled { opacity: .5; cursor: default; }
+.seg button { border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 6px 6px 0; }
+input[type=text], input[type=number] { font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); }
+input[type=number] { width: 90px; }
+#pattern { width: 200px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+code { font-size: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 0 3px; }
+main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+#empty { border: 2px dashed var(--border); border-radius: 10px; padding: 48px 16px; text-align: center; color: var(--muted); cursor: pointer; }
+#overlay { display: none; position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--accent) 12%, transparent); border: 3px dashed var(--accent); align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: var(--accent); pointer-events: none; }
+body.dragging #overlay { display: flex; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.fname { font-weight: 600; overflow-wrap: anywhere; }
+.head .remove { margin-left: auto; padding: 2px 8px; }
+.wrap { height: 150px; margin: 8px 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+body.mode-spec .wrap { height: 180px; }
+body.mode-both .wrap { height: 260px; }
+body.compact .card { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px; margin-bottom: 6px; }
+body.compact .head { flex: 0 1 auto; }
+body.compact .head .meta { display: none; }
+body.compact .head .remove { margin-left: 0; }
+body.compact .controls { flex: 1 1 auto; gap: 4px 8px; }
+body.compact .controls button, body.compact .head button { padding: 2px 7px; font-size: 12px; }
+body.compact .controls input { padding: 2px 5px; font-size: 12px; }
+body.compact .controls input[type=number] { width: 76px; }
+body.compact .controls .len { min-width: 0; font-size: 12px; }
+body.compact .out { flex-basis: 220px; }
+body.compact .wrap { flex: 1 0 100%; order: 1; margin: 0; height: 70px; }
+body.compact.mode-spec .wrap { height: 90px; }
+body.compact.mode-both .wrap { height: 130px; }
+.wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.controls label { display: flex; gap: 4px; align-items: center; }
+.len { min-width: 120px; }
+.out { display: flex; gap: 4px; align-items: center; flex: 1 1 280px; }
+.out input { flex: 1; min-width: 120px; }
+.dupnote { color: var(--warn); font-size: 12px; }
+#status { min-height: 1.4em; }
+#status.err { color: var(--warn); white-space: pre-line; }
+</style>
+</head>
+<body>
+<div id="overlay">Drop WAV files or folders</div>
+<header>
+  <div class="bar">
+    <h1>WAV Trimmer</h1>
+    <div class="group">
+      <button id="addBtn" class="primary">Add files…</button>
+      <input id="fileInput" type="file" accept=".wav,audio/wav,audio/x-wav" multiple hidden>
+      <button id="clearBtn">Clear all</button>
+    </div>
+    <div class="group seg" id="viewSeg">
+      <button data-mode="wave">Waveform</button><button data-mode="spec">Spectrogram</button><button data-mode="both">Both</button>
+    </div>
+    <button id="compactBtn" title="Shorter displays and single-line controls">Compact</button>
+    <span class="muted small">Drag handles to trim · drag inside the selection to move it · Ctrl+wheel zoom · Shift+wheel pan</span>
+  </div>
+  <div class="bar">
+    <div class="group">
+      <label for="pattern">Output name</label>
+      <input id="pattern" type="text" spellcheck="false" value="{name}">
+      <span class="muted">.wav</span>
+      <button data-preset="{name}">Original names</button>
+      <button data-preset="{first}_{n}">First file + number</button>
+      <button data-preset="{name}_trim">Add suffix</button>
+    </div>
+    <span class="muted small">Tokens: <code>{name}</code> <code>{first}</code> <code>{n}</code> <code>{start}</code> <code>{end}</code> <code>{len}</code> · type in a file's own box to override</span>
+  </div>
+  <div class="bar">
+    <div class="group">
+      <label for="fixedLen">Fixed length</label>
+      <input id="fixedLen" type="number" min="0" step="0.1" placeholder="seconds">
+      <button id="fixedBtn">Apply to all</button>
+    </div>
+    <div class="group">
+      <button id="saveDirBtn" class="primary">Save all to folder…</button>
+      <button id="zipBtn">Save all as ZIP…</button>
+    </div>
+    <div id="status" class="muted"></div>
+  </div>
+</header>
+<main>
+  <div id="empty">Drop WAV files or folders anywhere, or click to choose files.</div>
+  <div id="list"></div>
+</main>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const dpr = () => window.devicePixelRatio || 1;
+
+const items = [];
+const settings = { mode: 'both', compact: false, pattern: '{name}' };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('wavTrimmer') || '{}')); } catch {}
+const saveSettings = () => { try { localStorage.setItem('wavTrimmer', JSON.stringify(settings)); } catch {} };
+
+let colors = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['wave-bg', 'wave', 'axis', 'dim', 'handle', 'fg']) colors[k] = cs.getPropertyValue('--' + k).trim();
+}
+readColors();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); items.forEach(it => schedule(it, true)); });
+
+function setStatus(msg, err = false) {
+  const el = $('#status');
+  el.textContent = msg;
+  el.className = err ? 'err' : 'muted';
+}
+
+// ---------- WAV parsing / writing (raw bytes, so format is preserved exactly) ----------
+
+const READERS = {
+  int8: (dv, p) => (dv.getUint8(p) - 128) / 128,
+  int16: (dv, p) => dv.getInt16(p, true) / 32768,
+  int24: (dv, p) => (dv.getUint8(p) | (dv.getUint8(p + 1) << 8) | (dv.getInt8(p + 2) << 16)) / 8388608,
+  int32: (dv, p) => dv.getInt32(p, true) / 2147483648,
+  float32: (dv, p) => dv.getFloat32(p, true),
+  float64: (dv, p) => dv.getFloat64(p, true),
+};
+
+function parseWav(buf) {
+  const dv = new DataView(buf);
+  const tag = o => String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3));
+  if (buf.byteLength < 12 || tag(0) !== 'RIFF' || tag(8) !== 'WAVE') throw new Error('not a RIFF/WAVE file');
+  let off = 12, fmt = null, data = null;
+  while (off + 8 <= buf.byteLength) {
+    const id = tag(off), size = dv.getUint32(off + 4, true), body = off + 8;
+    if (id === 'fmt ') fmt = { off: body, size };
+    else if (id === 'data') { data = { off: body, size: Math.min(size, buf.byteLength - body) }; if (fmt) break; }
+    off = body + size + (size & 1);
+  }
+  if (!fmt || !data) throw new Error('missing fmt or data chunk');
+  let code = dv.getUint16(fmt.off, true);
+  const channels = dv.getUint16(fmt.off + 2, true);
+  const sampleRate = dv.getUint32(fmt.off + 4, true);
+  const blockAlign = dv.getUint16(fmt.off + 12, true);
+  const bits = dv.getUint16(fmt.off + 14, true);
+  if (code === 0xFFFE && fmt.size >= 26) code = dv.getUint16(fmt.off + 24, true); // WAVE_FORMAT_EXTENSIBLE subformat
+  const bps = blockAlign / channels;
+  let reader;
+  if (code === 1) reader = { 1: 'int8', 2: 'int16', 3: 'int24', 4: 'int32' }[bps];
+  else if (code === 3) reader = { 4: 'float32', 8: 'float64' }[bps];
+  if (!reader || !channels || !Number.isInteger(bps)) throw new Error(`unsupported WAV encoding (format ${code}, ${bits}-bit)`);
+  const frames = Math.floor(data.size / blockAlign);
+  if (!frames) throw new Error('no audio data');
+  return {
+    buf, dv, fmtBytes: new Uint8Array(buf, fmt.off, fmt.size), dataOff: data.off, frames,
+    channels, sampleRate, blockAlign, bps, bits, float: code === 3, read: READERS[reader],
+  };
+}
+
+function decodeMono(w, f0, f1) {
+  const { dv, read, channels: ch, blockAlign: ba, bps } = w, n = f1 - f0, out = new Float32Array(n);
+  let p = w.dataOff + f0 * ba;
+  if (ch === 1) for (let i = 0; i < n; i++, p += ba) out[i] = read(dv, p);
+  else for (let i = 0; i < n; i++, p += ba) {
+    let s = 0;
+    for (let c = 0; c < ch; c++) s += read(dv, p + c * bps);
+    out[i] = s / ch;
+  }
+  return out;
+}
+
+function decodeChannels(w, f0, f1) {
+  const { dv, read, channels: ch, blockAlign: ba, bps } = w, n = f1 - f0;
+  const out = Array.from({ length: ch }, () => new Float32Array(n));
+  let p = w.dataOff + f0 * ba;
+  for (let i = 0; i < n; i++, p += ba) for (let c = 0; c < ch; c++) out[c][i] = read(dv, p + c * bps);
+  return out;
+}
+
+function buildWav(it) {
+  const w = it.w, dataBytes = (it.end - it.start) * w.blockAlign, fl = w.fmtBytes.length, fp = fl & 1;
+  const total = 12 + 8 + fl + fp + 8 + dataBytes + (dataBytes & 1);
+  const out = new Uint8Array(total), dv = new DataView(out.buffer);
+  const put = (o, s) => { for (let i = 0; i < 4; i++) out[o + i] = s.charCodeAt(i); };
+  put(0, 'RIFF'); dv.setUint32(4, total - 8, true); put(8, 'WAVE');
+  put(12, 'fmt '); dv.setUint32(16, fl, true); out.set(w.fmtBytes, 20);
+  const o = 20 + fl + fp;
+  put(o, 'data'); dv.setUint32(o + 4, dataBytes, true);
+  out.set(new Uint8Array(w.buf, w.dataOff + it.start * w.blockAlign, dataBytes), o + 8);
+  return out;
+}
+
+// ---------- ZIP (store only, no compression) ----------
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(d) { let c = 0xFFFFFFFF; for (let i = 0; i < d.length; i++) c = CRC_TABLE[(c ^ d[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+
+function makeZip(files) {
+  const enc = new TextEncoder(), now = new Date(), parts = [], central = [];
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    const lh = new Uint8Array(30 + name.length), l = new DataView(lh.buffer);
+    l.setUint32(0, 0x04034b50, true); l.setUint16(4, 20, true); l.setUint16(6, 0x0800, true);
+    l.setUint16(10, time, true); l.setUint16(12, date, true); l.setUint32(14, crc, true);
+    l.setUint32(18, size, true); l.setUint32(22, size, true); l.setUint16(26, name.length, true);
+    lh.set(name, 30);
+    const ch = new Uint8Array(46 + name.length), c = new DataView(ch.buffer);
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true);
+    c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true);
+    c.setUint32(42, offset, true); ch.set(name, 46);
+    parts.push(lh, f.data); central.push(ch);
+    offset += lh.length + size;
+  }
+  const cdSize = central.reduce((s, b) => s + b.length, 0);
+  const end = new Uint8Array(22), e = new DataView(end.buffer);
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, cdSize, true); e.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end], { type: 'application/zip' });
+}
+
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// Ask where to save when the browser supports it (Chrome/Edge); otherwise fall back to a normal download.
+// The picker is opened before makeBlob() runs, since it must follow the click without a long delay.
+async function saveBlob(makeBlob, name, description, mime, ext) {
+  if (!window.showSaveFilePicker) {
+    download(await makeBlob(), name);
+    return `${name} sent to the browser's download folder (this browser can't choose a location).`;
+  }
+  try {
+    const fh = await showSaveFilePicker({ suggestedName: name, types: [{ description, accept: { [mime]: [ext] } }] });
+    const blob = await makeBlob();
+    const ws = await fh.createWritable();
+    await ws.write(blob);
+    await ws.close();
+    return `Saved ${fh.name}.`;
+  } catch (e) {
+    if (e.name === 'AbortError') return 'Save cancelled — nothing written.';
+    throw e;
+  }
+}
+
+// ---------- Rendering ----------
+
+const PEAK_BLOCK = 256;
+function computePeaks(m) {
+  const n = Math.ceil(m.length / PEAK_BLOCK), mn = new Float32Array(n), mx = new Float32Array(n);
+  for (let k = 0; k < n; k++) {
+    let lo = Infinity, hi = -Infinity;
+    const e = Math.min(m.length, (k + 1) * PEAK_BLOCK);
+    for (let i = k * PEAK_BLOCK; i < e; i++) { const s = m[i]; if (s < lo) lo = s; if (s > hi) hi = s; }
+    mn[k] = lo; mx[k] = hi;
+  }
+  return { mn, mx };
+}
+
+function drawWave(it, g, W, H) {
+  const [v0, v1] = it.view, spp = (v1 - v0) / W, mid = H / 2, amp = (H / 2 - 2) * it.gain;
+  const m = it.mono, N = m.length, { mn, mx } = it.peaks;
+  g.fillStyle = colors.axis; g.globalAlpha = .35; g.fillRect(0, Math.round(mid), W, 1); g.globalAlpha = 1;
+  g.fillStyle = colors.wave;
+  for (let x = 0; x < W; x++) {
+    const a = Math.floor(v0 + x * spp);
+    let b = Math.max(a + 1, Math.floor(v0 + (x + 1) * spp));
+    if (a >= N) break;
+    if (a < 0) continue;
+    b = Math.min(b, N);
+    let lo = Infinity, hi = -Infinity;
+    if (spp >= PEAK_BLOCK * 2) {
+      const k1 = Math.min(mn.length, Math.ceil(b / PEAK_BLOCK));
+      for (let k = Math.floor(a / PEAK_BLOCK); k < k1; k++) { if (mn[k] < lo) lo = mn[k]; if (mx[k] > hi) hi = mx[k]; }
+    } else {
+      for (let i = a; i < b; i++) { const s = m[i]; if (s < lo) lo = s; if (s > hi) hi = s; }
+    }
+    const y0 = mid - hi * amp, y1 = mid - lo * amp;
+    g.fillRect(x, y0, 1, Math.max(1, y1 - y0));
+  }
+}
+
+const NFFT = 512, HALF = NFFT / 2;
+const HANN = Float32Array.from({ length: NFFT }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (NFFT - 1)));
+const CMAP = (() => {
+  const stops = [[0, 0, 4], [40, 11, 84], [101, 21, 110], [159, 42, 99], [212, 72, 66], [245, 125, 21], [250, 193, 39], [252, 255, 164]];
+  const t = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const f = i / 255 * (stops.length - 1), j = Math.min(stops.length - 2, Math.floor(f)), r = f - j;
+    for (let c = 0; c < 3; c++) t[i * 3 + c] = Math.round(stops[j][c] + (stops[j + 1][c] - stops[j][c]) * r);
+  }
+  return t;
+})();
+
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang), h = len >> 1;
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let j = 0; j < h; j++) {
+        const a = i + j, b = a + h;
+        const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+        const ncr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = ncr;
+      }
+    }
+  }
+}
+
+function drawSpec(it, g, W, H) {
+  const [v0, v1] = it.view, m = it.mono, N = m.length, cols = W, range = 75;
+  const db = new Float32Array(cols * HALF), re = new Float32Array(NFFT), im = new Float32Array(NFFT);
+  let top = -Infinity;
+  for (let x = 0; x < cols; x++) {
+    const s = Math.round(v0 + (x + 0.5) * (v1 - v0) / cols) - HALF;
+    for (let i = 0; i < NFFT; i++) { const j = s + i; re[i] = (j >= 0 && j < N ? m[j] : 0) * HANN[i]; im[i] = 0; }
+    fft(re, im);
+    for (let k = 0; k < HALF; k++) {
+      const v = 10 * Math.log10(re[k] * re[k] + im[k] * im[k] + 1e-12);
+      db[x * HALF + k] = v;
+      if (v > top) top = v;
+    }
+  }
+  const off = document.createElement('canvas');
+  off.width = cols; off.height = HALF;
+  const og = off.getContext('2d'), img = og.createImageData(cols, HALF), px = img.data, floor = top - range;
+  for (let x = 0; x < cols; x++) for (let k = 0; k < HALF; k++) {
+    const ci = Math.round(clamp((db[x * HALF + k] - floor) / range, 0, 1) * 255) * 3;
+    const p = ((HALF - 1 - k) * cols + x) * 4;
+    px[p] = CMAP[ci]; px[p + 1] = CMAP[ci + 1]; px[p + 2] = CMAP[ci + 2]; px[p + 3] = 255;
+  }
+  og.putImageData(img, 0, 0);
+  g.drawImage(off, 0, 0, W, H);
+}
+
+function niceStep(raw) {
+  const p = 10 ** Math.floor(Math.log10(raw));
+  for (const m of [1, 2, 5, 10]) if (m * p >= raw) return m * p;
+}
+function fmtTime(sec, dec = 3) {
+  if (sec < 60) return sec.toFixed(dec) + ' s';
+  const m = Math.floor(sec / 60), s = sec - m * 60;
+  return `${m}:${s.toFixed(dec).padStart(dec ? dec + 3 : 2, '0')}`;
+}
+
+function drawAxis(it, g, W, H) {
+  const sr = it.w.sampleRate, [v0, v1] = it.view, t0 = v0 / sr, t1 = v1 / sr, d = dpr();
+  const step = niceStep((t1 - t0) / Math.max(2, W / (90 * d)));
+  const dec = Math.max(0, -Math.floor(Math.log10(step)));
+  const onSpec = 'rgba(255,255,255,.85)';
+  g.font = `${11 * d}px system-ui, sans-serif`;
+  g.fillStyle = settings.mode === 'spec' ? onSpec : colors.axis;
+  g.textBaseline = 'bottom';
+  for (let i = Math.ceil(t0 / step); i * step <= t1; i++) {
+    const t = i * step, x = (t * sr - v0) / (v1 - v0) * W;
+    g.fillRect(x, H - 5 * d, 1, 5 * d);
+    g.fillText(fmtTime(t, dec), x + 3 * d, H - d);
+  }
+  if (settings.mode !== 'wave') {
+    g.fillStyle = onSpec; g.textBaseline = 'top';
+    g.fillText(`${(sr / 2000).toFixed(1)} kHz`, 4 * d, 3 * d);
+  }
+}
+
+function renderBase(it) {
+  const W = it.canvas.width, H = it.canvas.height;
+  it.base.width = W; it.base.height = H;
+  const g = it.base.getContext('2d');
+  g.fillStyle = colors['wave-bg']; g.fillRect(0, 0, W, H);
+  if (settings.mode === 'spec') drawSpec(it, g, W, H);
+  else if (settings.mode === 'wave') drawWave(it, g, W, H);
+  else {
+    // spectrogram on top, waveform underneath, sharing one time axis
+    const hs = Math.round(H * 0.62);
+    drawSpec(it, g, W, hs);
+    g.save(); g.translate(0, hs); drawWave(it, g, W, H - hs); g.restore();
+    g.fillStyle = colors.axis; g.fillRect(0, hs, W, 1);
+  }
+  drawAxis(it, g, W, H);
+}
+
+const toX = (it, f, W) => (f - it.view[0]) / (it.view[1] - it.view[0]) * W;
+
+function draw(it) {
+  const W = it.canvas.width, H = it.canvas.height, g = it.ctx, d = dpr();
+  if (!W || !H) return;
+  g.drawImage(it.base, 0, 0);
+  const xs = toX(it, it.start, W), xe = toX(it, it.end, W);
+  g.fillStyle = colors.dim;
+  if (xs > 0) g.fillRect(0, 0, xs, H);
+  if (xe < W) g.fillRect(xe, 0, W - xe, H);
+  g.fillStyle = colors.handle;
+  g.fillRect(xs - d, 0, 2 * d, H); g.fillRect(xs - d, 0, 8 * d, 12 * d);
+  g.fillRect(xe - d, 0, 2 * d, H); g.fillRect(xe - 7 * d, 0, 8 * d, 12 * d);
+  if (playing && playing.it === it) {
+    g.fillStyle = colors.fg;
+    g.fillRect(toX(it, playFrame(), W) - d / 2, 0, d, H);
+  }
+}
+
+function schedule(it, rebase = false) {
+  it.needBase ||= rebase;
+  if (it.raf) return;
+  it.raf = requestAnimationFrame(() => {
+    it.raf = 0;
+    if (it.needBase) { it.needBase = false; renderBase(it); }
+    draw(it);
+  });
+}
+
+const resizeObs = new ResizeObserver(entries => {
+  for (const e of entries) {
+    const it = items.find(i => i.wrap === e.target);
+    if (!it) continue;
+    it.canvas.width = Math.round(it.wrap.clientWidth * dpr());
+    it.canvas.height = Math.round(it.wrap.clientHeight * dpr());
+    schedule(it, true);
+  }
+});
+
+// ---------- Playback ----------
+
+let actx = null, playing = null;
+function playFrame() { return playing.f0 + (actx.currentTime - playing.t0) * playing.it.w.sampleRate; }
+
+function togglePlay(it) {
+  if (playing && playing.it === it) { stopPlay(); return; }
+  stopPlay();
+  actx ||= new AudioContext();
+  if (actx.state === 'suspended') actx.resume();
+  const w = it.w;
+  let buf;
+  try { buf = actx.createBuffer(w.channels, it.end - it.start, w.sampleRate); }
+  catch { setStatus(`This browser can't play ${w.sampleRate} Hz audio (saving still works).`, true); return; }
+  decodeChannels(w, it.start, it.end).forEach((d, c) => buf.copyToChannel(d, c));
+  const src = actx.createBufferSource();
+  src.buffer = buf; src.connect(actx.destination);
+  src.onended = () => { if (playing && playing.src === src) stopPlay(); };
+  src.start();
+  playing = { it, src, t0: actx.currentTime, f0: it.start };
+  it.el.playBtn.textContent = '■ Stop';
+  (function tick() { if (playing && playing.src === src) { schedule(it); requestAnimationFrame(tick); } })();
+}
+
+function stopPlay() {
+  if (!playing) return;
+  const p = playing;
+  playing = null;
+  try { p.src.stop(); } catch {}
+  p.it.el.playBtn.textContent = '▶ Play';
+  schedule(p.it);
+}
+
+// ---------- Naming ----------
+
+const stem = n => n.replace(/\.[^.]+$/, '');
+function patternName(it, idx) {
+  const sr = it.w.sampleRate, pad = String(items.length).length;
+  const tokens = {
+    name: it.fileStem, first: items[0] ? items[0].fileStem : '', n: String(idx + 1).padStart(pad, '0'),
+    start: (it.start / sr).toFixed(3), end: (it.end / sr).toFixed(3), len: ((it.end - it.start) / sr).toFixed(3),
+  };
+  return (settings.pattern || '{name}').replace(/\{(\w+)\}/g, (m, k) => tokens[k] ?? m);
+}
+function cleanName(s) {
+  s = s.trim().replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').replace(/\.wav$/i, '');
+  return (s || 'untitled') + '.wav';
+}
+function resolveNames() {
+  const seen = new Set();
+  return items.map((it, i) => {
+    let n = cleanName(it.el.nameInput.value || patternName(it, i));
+    if (seen.has(n.toLowerCase())) {
+      const s = n.slice(0, -4);
+      let j = 2;
+      while (seen.has(`${s}_${j}.wav`.toLowerCase())) j++;
+      n = `${s}_${j}.wav`;
+    }
+    seen.add(n.toLowerCase());
+    return n;
+  });
+}
+function updateNames() {
+  const names = resolveNames();
+  items.forEach((it, i) => {
+    const intended = cleanName(it.el.nameInput.value || patternName(it, i));
+    it.el.nameInput.placeholder = stem(cleanName(patternName(it, i)));
+    it.el.dupNote.textContent = names[i] !== intended ? `duplicate → ${names[i]}` : '';
+  });
+}
+
+// ---------- Items ----------
+
+function boundsChanged(it) {
+  const sr = it.w.sampleRate, el = it.el;
+  if (document.activeElement !== el.startIn) el.startIn.value = (it.start / sr).toFixed(3);
+  if (document.activeElement !== el.endIn) el.endIn.value = (it.end / sr).toFixed(3);
+  el.len.textContent = 'Length ' + fmtTime((it.end - it.start) / sr);
+  updateNames();
+  schedule(it);
+}
+
+function setView(it, a, b) {
+  const N = it.w.frames, span = clamp(b - a, Math.min(N, 64), N);
+  a = clamp(a, 0, N - span);
+  it.view = [a, a + span];
+  schedule(it, true);
+}
+
+function frameAt(it, clientX) {
+  const r = it.canvas.getBoundingClientRect();
+  return it.view[0] + (clientX - r.left) / r.width * (it.view[1] - it.view[0]);
+}
+
+function hitTest(it, clientX) {
+  const r = it.canvas.getBoundingClientRect(), px = clientX - r.left;
+  const xs = toX(it, it.start, r.width), xe = toX(it, it.end, r.width);
+  const ds = Math.abs(px - xs), de = Math.abs(px - xe);
+  if (Math.min(ds, de) <= 8) return ds < de || (ds === de && px < xs) ? 'start' : 'end';
+  if (px > xs && px < xe) return 'move';
+  return null;
+}
+
+function applyDrag(it, f) {
+  const N = it.w.frames, ml = it.minLen;
+  f = Math.round(f);
+  if (it.drag.mode === 'start') it.start = clamp(f, 0, it.end - ml);
+  else if (it.drag.mode === 'end') it.end = clamp(f, it.start + ml, N);
+  else {
+    const len = it.end - it.start;
+    it.start = clamp(Math.round(f - it.drag.off), 0, N - len);
+    it.end = it.start + len;
+  }
+  boundsChanged(it);
+}
+
+const CARD_HTML = `
+  <div class="head"><span class="fname"></span><span class="meta muted small"></span><button class="remove" title="Remove">✕</button></div>
+  <div class="wrap"><canvas></canvas></div>
+  <div class="controls">
+    <button class="play">▶ Play</button>
+    <label>Start <input class="startIn" type="number" min="0" step="0.001"></label>
+    <label>End <input class="endIn" type="number" min="0" step="0.001"></label>
+    <span class="len muted"></span>
+    <button class="zoomSel">Zoom to selection</button>
+    <button class="zoomAll">Full view</button>
+    <button class="reset">Reset</button>
+    <button class="applyAll" title="Copy this file's start/end times to every other file">Apply bounds to all</button>
+    <div class="out">
+      <label>Save as</label><input class="nameIn" type="text" spellcheck="false"><span class="muted">.wav</span>
+      <button class="save">Save</button>
+    </div>
+    <span class="dupnote"></span>
+  </div>`;
+
+function addItem(fileName, w) {
+  const mono = decodeMono(w, 0, w.frames), peaks = computePeaks(mono);
+  let pk = 0;
+  for (let k = 0; k < peaks.mn.length; k++) pk = Math.max(pk, -peaks.mn[k], peaks.mx[k]);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = CARD_HTML;
+  const q = s => card.querySelector(s);
+  const it = {
+    name: fileName, fileStem: stem(fileName), w, mono, peaks,
+    gain: pk > 1e-9 ? Math.min(0.95 / pk, 200) : 1,
+    start: 0, end: w.frames, view: [0, w.frames], minLen: Math.max(1, Math.round(w.sampleRate * 0.001)),
+    card, wrap: q('.wrap'), canvas: q('canvas'), base: document.createElement('canvas'), drag: null,
+    el: {
+      playBtn: q('.play'), startIn: q('.startIn'), endIn: q('.endIn'), len: q('.len'),
+      nameInput: q('.nameIn'), dupNote: q('.dupnote'),
+    },
+  };
+  it.base.width = it.base.height = 1;
+  it.ctx = it.canvas.getContext('2d');
+  const meta = `${fmtTime(w.frames / w.sampleRate)} · ${w.sampleRate} Hz · ${w.channels} ch · ${w.bits}-bit${w.float ? ' float' : ''}`;
+  q('.fname').textContent = fileName;
+  q('.fname').title = meta;
+  q('.meta').textContent = meta;
+
+  const c = it.canvas;
+  c.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const f = frameAt(it, e.clientX);
+    const mode = hitTest(it, e.clientX) || (f < it.start ? 'start' : 'end');
+    it.drag = { mode, off: f - it.start };
+    if (mode !== 'move') applyDrag(it, f);
+    c.setPointerCapture(e.pointerId);
+    c.style.cursor = mode === 'move' ? 'grabbing' : 'ew-resize';
+    e.preventDefault();
+  });
+  c.addEventListener('pointermove', e => {
+    if (it.drag) applyDrag(it, frameAt(it, e.clientX));
+    else c.style.cursor = { start: 'ew-resize', end: 'ew-resize', move: 'grab' }[hitTest(it, e.clientX)] || 'crosshair';
+  });
+  const endDrag = () => { it.drag = null; c.style.cursor = ''; };
+  c.addEventListener('pointerup', endDrag);
+  c.addEventListener('pointercancel', endDrag);
+  c.addEventListener('wheel', e => {
+    if (!e.ctrlKey && !e.shiftKey) return;
+    e.preventDefault();
+    const [v0, v1] = it.view, span = v1 - v0;
+    if (e.ctrlKey) {
+      const f = frameAt(it, e.clientX), ns = span * (e.deltaY > 0 ? 1.25 : 0.8);
+      const a = f - (f - v0) * ns / span;
+      setView(it, a, a + ns);
+    } else {
+      const dir = Math.sign(e.deltaY || e.deltaX);
+      setView(it, v0 + dir * span * 0.1, v1 + dir * span * 0.1);
+    }
+  }, { passive: false });
+
+  const sr = w.sampleRate;
+  const fromInput = (inp, isStart) => {
+    const v = parseFloat(inp.value);
+    if (Number.isFinite(v)) {
+      const f = Math.round(v * sr);
+      if (isStart) it.start = clamp(f, 0, it.end - it.minLen);
+      else it.end = clamp(f, it.start + it.minLen, w.frames);
+    }
+    inp.blur();
+    boundsChanged(it);
+  };
+  it.el.startIn.addEventListener('change', () => fromInput(it.el.startIn, true));
+  it.el.endIn.addEventListener('change', () => fromInput(it.el.endIn, false));
+  it.el.playBtn.addEventListener('click', () => togglePlay(it));
+  q('.zoomSel').addEventListener('click', () => {
+    const pad = (it.end - it.start) * 0.05;
+    setView(it, it.start - pad, it.end + pad);
+  });
+  q('.zoomAll').addEventListener('click', () => setView(it, 0, w.frames));
+  q('.reset').addEventListener('click', () => { it.start = 0; it.end = w.frames; setView(it, 0, w.frames); boundsChanged(it); });
+  q('.applyAll').addEventListener('click', () => applyBoundsToAll(it));
+  it.el.nameInput.addEventListener('input', updateNames);
+  q('.save').addEventListener('click', async () => {
+    const name = resolveNames()[items.indexOf(it)];
+    try { setStatus(await saveBlob(() => new Blob([buildWav(it)], { type: 'audio/wav' }), name, 'WAV audio', 'audio/wav', '.wav')); }
+    catch (e) { setStatus(`Save failed: ${e.message}`, true); }
+  });
+  q('.remove').addEventListener('click', () => removeItem(it));
+
+  items.push(it);
+  $('#list').appendChild(card);
+  resizeObs.observe(it.wrap);
+  boundsChanged(it);
+}
+
+function removeItem(it) {
+  if (playing && playing.it === it) stopPlay();
+  resizeObs.unobserve(it.wrap);
+  it.card.remove();
+  items.splice(items.indexOf(it), 1);
+  updateNames();
+  refreshEmpty();
+}
+
+function refreshEmpty() {
+  $('#empty').style.display = items.length ? 'none' : '';
+}
+
+function applyBoundsToAll(src) {
+  const s = src.start / src.w.sampleRate, e = src.end / src.w.sampleRate;
+  for (const it of items) {
+    if (it === src) continue;
+    const sr = it.w.sampleRate, N = it.w.frames;
+    const a = clamp(Math.round(s * sr), 0, N - it.minLen);
+    it.start = a;
+    it.end = clamp(Math.round(e * sr), a + it.minLen, N);
+    boundsChanged(it);
+  }
+  setStatus(`Applied ${fmtTime(s)} – ${fmtTime(e)} to all files (clamped to each file's duration).`);
+}
+
+function applyFixedLength() {
+  const L = parseFloat($('#fixedLen').value);
+  if (!(L > 0)) { setStatus('Enter a fixed length in seconds first.', true); return; }
+  let short = 0;
+  for (const it of items) {
+    const N = it.w.frames, n = Math.max(it.minLen, Math.round(L * it.w.sampleRate));
+    if (n > N) { short++; it.start = 0; it.end = N; }
+    else { it.end = Math.min(it.start + n, N); it.start = it.end - n; }
+    boundsChanged(it);
+  }
+  setStatus(`Set every selection to ${L} s` + (short ? ` — ${short} file(s) shorter than that were left at full length.` : '.'));
+}
+
+// ---------- Loading ----------
+
+async function addFiles(files) {
+  files = files.filter(f => /\.wav$/i.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  if (!files.length) { setStatus('No .wav files found in what was dropped.', true); return; }
+  const errors = [];
+  for (let i = 0; i < files.length; i++) {
+    setStatus(`Loading ${i + 1}/${files.length}: ${files[i].name}`);
+    await new Promise(r => setTimeout(r));
+    try { addItem(files[i].name, parseWav(await files[i].arrayBuffer())); }
+    catch (e) { errors.push(`${files[i].name}: ${e.message}`); }
+  }
+  refreshEmpty();
+  updateNames();
+  if (errors.length) setStatus(`Loaded ${files.length - errors.length} file(s). Skipped:\n` + errors.join('\n'), true);
+  else setStatus(`Loaded ${files.length} file(s).`);
+}
+
+async function filesFromDrop(dt) {
+  const entries = [...dt.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!entries.length) return [...dt.files];
+  const out = [];
+  async function walk(en) {
+    if (en.isFile) out.push(await new Promise((res, rej) => en.file(res, rej)));
+    else if (en.isDirectory) {
+      const r = en.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => r.readEntries(res, rej));
+        for (const c of batch) await walk(c);
+      } while (batch.length);
+    }
+  }
+  for (const en of entries) await walk(en);
+  return out;
+}
+
+// ---------- Saving ----------
+
+function setBusy(b) {
+  for (const id of ['#saveDirBtn', '#zipBtn', '#clearBtn', '#addBtn']) $(id).disabled = b;
+}
+
+async function saveToFolder() {
+  if (!items.length) { setStatus('Nothing to save.', true); return; }
+  if (!window.showDirectoryPicker) { setStatus('Saving to a folder needs Chrome or Edge — use "Download all as ZIP" instead.', true); return; }
+  let dir;
+  try { dir = await showDirectoryPicker({ mode: 'readwrite' }); }
+  catch (e) {
+    setStatus(e.name === 'AbortError'
+      ? 'Nothing saved: folder picker was cancelled, or the browser\'s "allow editing" prompt was declined.'
+      : `Can't use that folder: ${e.message}`, true);
+    return;
+  }
+  if (await dir.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+    setStatus(`Nothing saved: write permission for "${dir.name}" was not granted.`, true);
+    return;
+  }
+  const names = resolveNames(), existing = [];
+  for (const n of names) { try { await dir.getFileHandle(n); existing.push(n); } catch {} }
+  if (existing.length && !confirm(
+    `${existing.length} file(s) already exist in "${dir.name}" and will be overwritten:\n\n` +
+    existing.slice(0, 15).join('\n') + (existing.length > 15 ? '\n…' : '') + '\n\nContinue?')) {
+    setStatus('Nothing saved: overwrite was cancelled.', true);
+    return;
+  }
+  setBusy(true);
+  try {
+    for (let i = 0; i < items.length; i++) {
+      setStatus(`Writing ${i + 1}/${items.length}: ${names[i]}`);
+      const fh = await dir.getFileHandle(names[i], { create: true });
+      const ws = await fh.createWritable();
+      await ws.write(buildWav(items[i]));
+      await ws.close();
+    }
+    // read back what landed in the folder so the status reflects what is really on disk
+    let found = 0;
+    for (const n of names) { try { await (await dir.getFileHandle(n)).getFile(); found++; } catch {} }
+    setStatus(`Saved ${found}/${items.length} file(s) into the folder "${dir.name}" (e.g. ${names[0]}).`, found !== items.length);
+  } catch (e) {
+    setStatus(`Save failed: ${e.message}`, true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function saveZip() {
+  if (!items.length) { setStatus('Nothing to save.', true); return; }
+  setBusy(true);
+  try {
+    const names = resolveNames();
+    const build = async () => {
+      setStatus('Building ZIP…');
+      await new Promise(r => setTimeout(r));
+      return makeZip(items.map((it, i) => ({ name: names[i], data: buildWav(it) })));
+    };
+    setStatus(await saveBlob(build, `${items[0].fileStem}_trimmed.zip`, 'ZIP archive', 'application/zip', '.zip'));
+  } catch (e) {
+    setStatus(`ZIP failed: ${e.message}`, true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+// ---------- Wiring ----------
+
+const fileInput = $('#fileInput');
+$('#addBtn').addEventListener('click', () => fileInput.click());
+$('#empty').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+$('#clearBtn').addEventListener('click', () => { [...items].forEach(removeItem); setStatus(''); });
+$('#fixedBtn').addEventListener('click', applyFixedLength);
+$('#saveDirBtn').addEventListener('click', saveToFolder);
+$('#zipBtn').addEventListener('click', saveZip);
+if (!window.showDirectoryPicker) $('#saveDirBtn').title = 'Requires Chrome or Edge';
+
+const patternIn = $('#pattern');
+patternIn.value = settings.pattern;
+patternIn.addEventListener('input', () => { settings.pattern = patternIn.value; saveSettings(); updateNames(); });
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  patternIn.value = settings.pattern = b.dataset.preset;
+  saveSettings(); updateNames();
+}));
+
+const segBtns = document.querySelectorAll('#viewSeg button');
+function setMode(m) {
+  settings.mode = m; saveSettings();
+  segBtns.forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  document.body.classList.remove('mode-wave', 'mode-spec', 'mode-both');
+  document.body.classList.add('mode-' + m);
+  items.forEach(it => schedule(it, true));
+}
+segBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+setMode(settings.mode);
+
+const compactBtn = $('#compactBtn');
+function setCompact(on) {
+  settings.compact = on; saveSettings();
+  compactBtn.classList.toggle('on', on);
+  document.body.classList.toggle('compact', on);
+}
+compactBtn.addEventListener('click', () => setCompact(!settings.compact));
+setCompact(settings.compact);
+
+let dragDepth = 0;
+const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+window.addEventListener('dragenter', e => { if (hasFiles(e)) { dragDepth++; document.body.classList.add('dragging'); } });
+window.addEventListener('dragleave', e => { if (hasFiles(e) && --dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('drop', async e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  addFiles(await filesFromDrop(e.dataTransfer));
+});
+</script>
+</body>
+</html>
