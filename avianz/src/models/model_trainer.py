@@ -26,7 +26,7 @@ from torch.utils.data import DataLoader
 import json, os
 
 from avianz.src.core import config_loader
-from src.models import architectures
+from avianz.src.models import architectures
 
 
 class ModelTrainer:

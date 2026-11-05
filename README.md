@@ -37,9 +37,13 @@ git clone https://github.com/laelume/avianz.git && cd avianz && pip install -e .
 
 # CLI Command Line Interface
 ```
-cd avianz && 
-python AviaNZ.py -c -b -d "Z:\some_top_level\collection\of\audio_files\YYYYMMDD" -r "Kiwi (Nth Is Brown)" -w -asd "D:\avianz_annotations"
+avianz -c -b -d "Z:\some_top_level\collection\of\audio_files\YYYYMMDD" -r "Kiwi (Nth Is Brown)" -w -asd "D:\avianz_annotations"
 ```
+
+`avianz ...` (after `pip install -e .`) and `python -m avianz ...` take the same options and work from any folder.
+Without installing, `python -m avianz ...` works from the repository root (or with the root on `PYTHONPATH`).
+AviaNZ imports itself as the `avianz` package (`from avianz.src.core import ...`), so running the file directly
+(`python avianz/AviaNZ.py`) needs the package installed.
 
 Batch mode never writes `.data` files next to the source audio, so existing annotations there are never overwritten. Results go to the `-asd` directory, mirroring the audio folder tree:
 `-asd D:\out` + `Z:\survey\site1\rec.wav` → `D:\out\survey\site1\rec.data`.
@@ -80,7 +84,7 @@ sudo apt-get install git
 ```
 4. Install the required packages by running `pip3 install -r requirements.txt --user` at the command line. (On Ubuntu and some other systems, `python` and `pip` refer to the Python 2 versions. If you are sure these refer to version 3 of the language, use `python` and `pip` in steps 4-6.)  
 5. Build the Cython extensions by running `cd ext; python3 setup.py build_ext -i; cd..`  
-6. Done! Launch the software with `python3 AviaNZ.py`  
+6. Done! Launch the software from the repository root with `python3 -m avianz` (or `pip install -e .` and run `avianz`)  
 
 
 # Acknowledgements

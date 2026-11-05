@@ -46,10 +46,9 @@ AUDIO_EXTS = (".wav", ".flac")
 
 
 def setup_avianz(repo):
-    """Make the AviaNZ core importable (it uses both avianz.src.* and src.* imports)."""
-    for p in (os.path.join(repo, "avianz"), repo):
-        if p not in sys.path:
-            sys.path.insert(0, p)
+    """Make the avianz package importable from the repository root (no pip install needed)."""
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
     global np, sf, annotation, wavelet_segment
     import numpy as np
     import soundfile as sf

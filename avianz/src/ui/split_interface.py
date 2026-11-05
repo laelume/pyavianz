@@ -25,9 +25,9 @@ import os
 import datetime as dt
 
 # sys.path.append('..')
-from ext import SplitLauncher
+from avianz.ext import SplitLauncher
 from avianz.src.core import annotation
-from src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.popups import MessagePopup
 
 
 class SplitData(QMainWindow):

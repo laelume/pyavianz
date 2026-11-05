@@ -627,7 +627,7 @@ class Trainer:
         # Add DANN components if requested
         if self.use_dann:
             print("  Adding DANN domain discriminator for AST...")
-            from models import GradientReversalLayer
+            from avianz_hpc.core.models import GradientReversalLayer
             
             # AST uses 768-dim embeddings
             feat_dim = 768

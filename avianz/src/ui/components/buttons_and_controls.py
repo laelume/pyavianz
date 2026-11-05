@@ -26,7 +26,7 @@ import pyqtgraph.functions as fn
 from PyQt6.QtWidgets import QAbstractButton, QPushButton, QSlider, QLabel, QHBoxLayout, QGridLayout, QWidget, QSizePolicy, QToolButton, QStyle, QApplication
 from PyQt6.QtCore import Qt, QTimer, QMimeData, pyqtSignal, QEvent
 from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont, QDrag
-from src.ui.components.audio_player import ControllableAudio
+from avianz.src.ui.components.audio_player import ControllableAudio
 
 
 class PicButton(QAbstractButton):

@@ -27,8 +27,8 @@ from PyQt6.QtCore import Qt
 
 import pyqtgraph as pg
 
-from src.ui.components.buttons_and_controls import MainPushButton
-from src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.buttons_and_controls import MainPushButton
+from avianz.src.ui.components.popups import MessagePopup
 import openpyxl
 
 pg.setConfigOption('background','w')

@@ -25,8 +25,8 @@ from PyQt6.QtCore import Qt, QDir
 
 import pyqtgraph as pg
 
-from src.ui.components.buttons_and_controls import MainPushButton
-from src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.buttons_and_controls import MainPushButton
+from avianz.src.ui.components.popups import MessagePopup
 
 pg.setConfigOption('background','w')
 pg.setConfigOption('foreground','k')

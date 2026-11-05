@@ -28,11 +28,11 @@ from pyqtgraph.dockarea import Dock, DockArea
 
 from avianz.src.core import config_loader
 from avianz.src.core.batch_processor import BatchProcessor, BatchProcessorCallbacks
-from src.utils.exceptions import GentleExitException
-from src.ui.components.popups import MessagePopup
-from src.ui.components.file_list import LightedFileList
-from src.ui.components.buttons_and_controls import MainPushButton
-from src.ui.dialogs.export_bats import ExportBats
+from avianz.src.utils.exceptions import GentleExitException
+from avianz.src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.file_list import LightedFileList
+from avianz.src.ui.components.buttons_and_controls import MainPushButton
+from avianz.src.ui.dialogs.export_bats import ExportBats
 
 import webbrowser, copy
 

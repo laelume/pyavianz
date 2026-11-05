@@ -11,11 +11,11 @@ import numpy as np
 
 import pyqtgraph as pg
 
-from src.ui.components.popups import MessagePopup
-from src.ui.components.buttons_and_controls import BrightContrVol
+from avianz.src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.buttons_and_controls import BrightContrVol
 from avianz.src.core import annotation
 from avianz.src.core import spectrogram
-from src.ui.colourMaps import colourMaps
+from avianz.src.ui.colourMaps import colourMaps
 
 
 class CompareCalls(QMainWindow):

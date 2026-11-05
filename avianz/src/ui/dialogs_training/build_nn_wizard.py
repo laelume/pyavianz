@@ -24,16 +24,16 @@ import platform
 from PyQt6.QtGui import QIcon, QValidator, QPixmap, QColor
 from PyQt6.QtCore import QDir, Qt
 
-from src.ui.components.validators import FiltValidator
+from avianz.src.ui.components.validators import FiltValidator
 from PyQt6.QtWidgets import QLabel, QSlider, QPushButton, QListWidget, QListWidgetItem, QComboBox, QWizard, QWizardPage, QLineEdit, QSizePolicy, QVBoxLayout, QHBoxLayout, QCheckBox, QRadioButton, QGridLayout, QFileDialog, QAbstractItemView
 
 import pyqtgraph as pg
 
 import numpy as np
-from src.ui.colourMaps import colourMaps
-from src.ui.components.buttons_and_controls import CustomSlider, PicButton
-from src.ui.components.file_list import LightedFileList
-from src.ui.dialogs_training.roc_canvas import ROCCanvas
+from avianz.src.ui.colourMaps import colourMaps
+from avianz.src.ui.components.buttons_and_controls import CustomSlider, PicButton
+from avianz.src.ui.components.file_list import LightedFileList
+from avianz.src.ui.dialogs_training.roc_canvas import ROCCanvas
 from avianz.src.core import config_loader
 from avianz.src.core import spectrogram
 from avianz.src.core import annotation

@@ -25,7 +25,7 @@ from PyQt6.QtCore import Qt, QSize, pyqtSignal
 
 import pyqtgraph as pg
 
-from src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.popups import MessagePopup
 
 
 

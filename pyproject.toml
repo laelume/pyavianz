@@ -2,7 +2,8 @@
 # Updated July 2026 laelume aka Ashlae Blum(e)
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+# >=64 for editable installs (PEP 660); >=62.3 for "**" in package-data
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -32,9 +33,22 @@ dependencies = [
 
 # maps the 'avianz' shell command to a callable in the package
 [project.scripts]
-avianz = "avianz.AviaNZ:mainlauncher"
+avianz = "avianz.AviaNZ:main"
 
 # replaces find_packages(where=".") from the old setup.py
+# Search from the repo root so the installed top-level package is `avianz`
+# (where = ["avianz"] installed `src`, `Config`, `Filters`, ... as separate top-level packages)
 [tool.setuptools.packages.find]
-# where = ["."]
-where = ["avianz"]
+where = ["."]
+include = ["avianz", "avianz.*"]
+
+# non-Python files AviaNZ reads at run time (relative to the avianz/ package folder)
+[tool.setuptools.package-data]
+avianz = [
+    "Config/*",
+    "Filters/**/*",
+    "ext/*.pyd",
+    "ext/*.so",
+    "src/data/**/*",
+    "src/resources/**/*",
+]

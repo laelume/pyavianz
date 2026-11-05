@@ -86,38 +86,38 @@ from avianz.src.core import wavelet_segment
 from avianz.src.core import spectrogram
 from avianz.src.core import segmentation
 from avianz.src.core import audio_data
-from src.ui.components.audio_player import ControllableAudio
-from src.ui.components.axis_widgets import TimeAxisHour, TimeAxisMin
-from src.ui.components.buttons_and_controls import BrightContrVol, CustomSlider
-from src.ui.components.popups import MessagePopup
-from src.ui.components.file_list import LightedFileList
-from src.ui.components.graphics_items import ClickableRectItem
-from src.ui.components.roi_components import LinearRegionItem2, LinearRegionItemO, ShadedRectROI
-from src.ui.components.species_menus import BatSelectionMenu, BirdSelectionMenu
-from src.ui.components.viewbox_extensions import ChildInfoViewBox, DemousedViewBox, DragViewBox
-from src.ui.colourMaps import colourMaps
-from src.utils import shapes
+from avianz.src.ui.components.audio_player import ControllableAudio
+from avianz.src.ui.components.axis_widgets import TimeAxisHour, TimeAxisMin
+from avianz.src.ui.components.buttons_and_controls import BrightContrVol, CustomSlider
+from avianz.src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.file_list import LightedFileList
+from avianz.src.ui.components.graphics_items import ClickableRectItem
+from avianz.src.ui.components.roi_components import LinearRegionItem2, LinearRegionItemO, ShadedRectROI
+from avianz.src.ui.components.species_menus import BatSelectionMenu, BirdSelectionMenu
+from avianz.src.ui.components.viewbox_extensions import ChildInfoViewBox, DemousedViewBox, DragViewBox
+from avianz.src.ui.colourMaps import colourMaps
+from avianz.src.utils import shapes
 
 # Individual dialog imports
-from src.ui.dialogs.diagnostic import Diagnostic
-from src.ui.dialogs.diagnosticNN import DiagnosticNN
-from src.ui.dialogs.spectrogram_dialog import SpectrogramDialog
-from src.ui.dialogs.shapes_analysis_dialog import ShapesDialog
-from src.ui.dialogs.denoise import Denoise
-from src.ui.dialogs.excel2annotation import Excel2Annotation
-from src.ui.dialogs.tag2annotation import Tag2Annotation
-from src.ui.dialogs.backup_annotations import BackupAnnotation
-from src.ui.dialogs.segmentation import SegmentationDialog
-from src.ui.dialogs.cluster import Cluster
-from src.ui.dialogs.operator_reviewer import OperatorReviewer
-from src.ui.dialogs.filter_manager import FilterManager
-from src.ui.dialogs.add_noise_data import AddNoiseData
+from avianz.src.ui.dialogs.diagnostic import Diagnostic
+from avianz.src.ui.dialogs.diagnosticNN import DiagnosticNN
+from avianz.src.ui.dialogs.spectrogram_dialog import SpectrogramDialog
+from avianz.src.ui.dialogs.shapes_analysis_dialog import ShapesDialog
+from avianz.src.ui.dialogs.denoise import Denoise
+from avianz.src.ui.dialogs.excel2annotation import Excel2Annotation
+from avianz.src.ui.dialogs.tag2annotation import Tag2Annotation
+from avianz.src.ui.dialogs.backup_annotations import BackupAnnotation
+from avianz.src.ui.dialogs.segmentation import SegmentationDialog
+from avianz.src.ui.dialogs.cluster import Cluster
+from avianz.src.ui.dialogs.operator_reviewer import OperatorReviewer
+from avianz.src.ui.dialogs.filter_manager import FilterManager
+from avianz.src.ui.dialogs.add_noise_data import AddNoiseData
 
 # Training dialog imports  
-from src.ui.dialogs_training.build_recognizer_wizard import BuildRecAdvWizard
-from src.ui.dialogs_training.build_nn_wizard import BuildNNWizard
-from src.ui.dialogs_training.test_recognizer_wizard import TestRecWizard
-from src.ui.dialogs_training.filter_customize_roc import FilterCustomiseROC
+from avianz.src.ui.dialogs_training.build_recognizer_wizard import BuildRecAdvWizard
+from avianz.src.ui.dialogs_training.build_nn_wizard import BuildNNWizard
+from avianz.src.ui.dialogs_training.test_recognizer_wizard import TestRecWizard
+from avianz.src.ui.dialogs_training.filter_customize_roc import FilterCustomiseROC
 import re
 import resampy
 import soundfile as sf
@@ -3741,7 +3741,7 @@ class ManualInterface(QMainWindow):
             self.diagnosticDialog.activate.setEnabled(False)
             self.statusLeft.setText("Making diagnostic plots...")
             # Note: importing here so that main program could be run without ext/
-            from ext import ce_denoise
+            from avianz.ext import ce_denoise
 
             # take values: -2/-3/-4 for AA types, -2/-3 for En/Spec plot
             [filter, aaType, markSpec] = self.diagnosticDialog.getValues()
@@ -5233,7 +5233,7 @@ class ManualInterface(QMainWindow):
                 import json
                 import os
                 import torch
-                from src.models import model_loader, inference
+                from avianz.src.models import model_loader, inference
                 
                 config_name = filtname
                 model_name = settings.get("nnModelFile")
@@ -5265,8 +5265,8 @@ class ManualInterface(QMainWindow):
                     self.statusLeft.setText(f'Resampling audio from {current_sample_rate} Hz to {model_sample_rate} Hz...')
                     QApplication.processEvents()
                     
-                    import src.core.spectrogram as spectrogram
-                    import src.core.audio_data as audio_data
+                    import avianz.src.core.spectrogram as spectrogram
+                    import avianz.src.core.audio_data as audio_data
                     temp_sp = spectrogram.Spectrogram(self.sp.window_width, self.sp.incr)
                     temp_sp.audio_data = audio_data.AudioData(
                         data=self.sp.audio_data.data.copy(),
@@ -5309,8 +5309,8 @@ class ManualInterface(QMainWindow):
                 QApplication.processEvents()
                 
                 # Create temporary spectrogram object for inference
-                import src.core.spectrogram as spectrogram
-                import src.core.audio_data as audio_data
+                import avianz.src.core.spectrogram as spectrogram
+                import avianz.src.core.audio_data as audio_data
                 temp_sp = spectrogram.Spectrogram(window_width, incr)
                 temp_sp.audio_data = audio_data.AudioData(
                     data=audio_for_inference,

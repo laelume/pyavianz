@@ -63,7 +63,7 @@ def loadModel(nn_name, dirnn):
                 model_type = config.get('model_type', 'CNN')
                 
                 if model_type == 'AST':
-                    from src.models import architectures
+                    from avianz.src.models import architectures
                     import torch.nn as nn
                     num_classes = config.get('num_classes', 2)
                     input_size = config.get('input_size', None)
@@ -96,7 +96,7 @@ def loadModel(nn_name, dirnn):
                     missing_keys, unexpected_keys = model.load_state_dict(loaded, strict=False)
                     
                 elif model_type == 'CNN':
-                    from src.models import architectures
+                    from avianz.src.models import architectures
                     input_size = config.get('input_size', [128, 400])
                     num_classes = config.get('num_classes', 2)
                     model = architectures.CNNModel(input_size[0], input_size[1], num_classes)
@@ -135,7 +135,7 @@ def loadModel(nn_name, dirnn):
         print(f"⚠️  Detected {format_msg}: {nn_name}")
         print(f"    Converting to PyTorch format (using {weights_ext})...")
         
-        from src.models.tf_to_torch_converter import convert_tf_model_to_pytorch
+        from avianz.src.models.tf_to_torch_converter import convert_tf_model_to_pytorch
         
         try:
             model = convert_tf_model_to_pytorch(json_path, weights_path)
@@ -179,7 +179,7 @@ def loadModelFromJson(jsonPath):
     with open(jsonPath, "r") as f:
         config = json.load(f)
     
-    from src.models import architectures
+    from avianz.src.models import architectures
     
     if config.get('model_type') == 'CNN':
         model = architectures.CNNModel(

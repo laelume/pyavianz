@@ -25,12 +25,12 @@ from PyQt6.QtGui import *
 from PyQt6.QtWidgets import QLabel, QDialog, QPushButton, QLineEdit, QFileDialog, QHBoxLayout, QVBoxLayout # listing some explicitly to make syntax checks lighter
 from PyQt6.QtWidgets import *
 
-from src.ui.components.validators import FiltValidator
+from avianz.src.ui.components.validators import FiltValidator
 from PyQt6.QtCore import Qt
 
 import pyqtgraph as pg
 
-from src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.popups import MessagePopup
 from avianz.src.core import config_loader
 import json
 

@@ -21,7 +21,7 @@
 # For running the batch processor from the terminal
 
 from avianz.src.core.batch_processor import BatchProcessor, BatchProcessorCallbacks
-from src.utils.exceptions import GentleExitException
+from avianz.src.utils.exceptions import GentleExitException
 
 
 class CLIUserInteraction(BatchProcessorCallbacks):

@@ -161,33 +161,38 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
 
     # copy over filters to ~/.avianz/Filters/:
 
-    # Walk the recogniser tree.
+    # Walk the recogniser tree. The bundled Filters/ may be organised in subfolders, but they
+    # are copied FLAT into ~/.avianz/Filters/: config_loader.filters(), the NN model/ROC
+    # lookups (<filterdir>/<name>.json/.pth/.weights.h5) and the Filter Manager all expect
+    # every recogniser file at the top level, so a nested copy would never be found by -r.
     filterdir = os.path.join(configdir, "Filters/")
     if not os.path.isdir(filterdir):
         print("Creating filter dir %s" % filterdir)
         os.makedirs(filterdir)
 
+    copied_from = {}  # file name -> source path, to catch the same name in two subfolders
     for root, dirs, files in os.walk("Filters"):
 
-        # Ignore Python bytecode cache directories.
+        # Ignore Python bytecode cache directories; sort so name clashes resolve the same way every run
         if "__pycache__" in dirs:
-            print("Ignoring __pycache__ directory.")
             dirs.remove("__pycache__")
+        dirs.sort()
 
-        for f in files:
-            ff = os.path.join(root, f) # Kiwi.txt
+        for f in sorted(files):
+            if f == "__init__.py":  # package marker for pip packaging, not a recogniser
+                continue
+            ff = os.path.join(root, f) # Filters/<subfolder>/Kiwi.txt
 
-            # Preserve the relative directory structure under Filters/
-            rel = os.path.relpath(ff, "Filters")
-            dest = os.path.join(filterdir, rel) # ~/.avianz/Filters/Kiwi.txt
+            if f in copied_from:
+                print("Warning: recogniser file %s also in %s; using %s" % (ff, copied_from[f], copied_from[f]))
+                continue
+            copied_from[f] = ff
 
-            # Create destination subdirectories if needed.
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-
-            if not os.path.isfile(dest): # ~/.avianz/Filters/Kiwi.txt
-                print("Recogniser %s not found, providing default" % rel)
+            dest = os.path.join(filterdir, f) # ~/.avianz/Filters/Kiwi.txt
+            if not os.path.isfile(dest):
+                print("Recogniser %s not found, providing default" % f)
                 try:
-                    shutil.copy2(ff, dest) # cp Filters/Kiwi.txt ~/.avianz/Filters/
+                    shutil.copy2(ff, dest) # cp Filters/<subfolder>/Kiwi.txt ~/.avianz/Filters/
                 except Exception as e:
                     print("Warning: failed to copy recogniser %s to %s" % (ff, dest))
                     print(e)
@@ -197,7 +202,7 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
     if cli:
         print("Starting AviaNZ in CLI mode")
         if batchmode:
-            from src.cli.batch_cli import run_cli_batch
+            from avianz.src.cli.batch_cli import run_cli_batch
             # if os.path.isdir(sdir1) and recogniser in confloader.filters(filterdir).keys():
             # Added multi-species filter inclusion
             # recogniser is a tuple; an empty one (no -r given) must fail, as all() of nothing is True
@@ -268,7 +273,7 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
         else:
             if (cheatsheet or zooniverse) and isinstance(infile, str):
                 from PyQt6.QtWidgets import QApplication
-                from src.ui import AviaNZ_manual_GUI
+                from avianz.src.ui import AviaNZ_manual_GUI
                 #from src.ui import manual_interface
                 app = QApplication(sys.argv)
                 avianz = AviaNZ_manual_GUI.AviaNZ(configdir=configdir, CLI=True, cheatsheet=cheatsheet, zooniverse=zooniverse, firstFile=infile, imageFile=imagefile, command=command)
@@ -284,7 +289,7 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
         from PyQt6 import QtCore
         
         # Register the UI MessagePopup implementation for core modules to use
-        from src.ui.components.popups import MessagePopup as UIMessagePopup
+        from avianz.src.ui.components.popups import MessagePopup as UIMessagePopup
         from avianz.src.core import message_popup
         message_popup.set_message_popup_class(UIMessagePopup)
         
@@ -319,7 +324,7 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
             # Opens startup splash screen
             if task is None:
                 # This screen asks what you want to do, then processes the response
-                from src.ui.dialogs.start_screen import StartScreen
+                from avianz.src.ui.dialogs.start_screen import StartScreen
                 first = StartScreen()
                 first.show()
                 app.exec()
@@ -328,18 +333,18 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
             # Initialize to previous task for skip splash screen on relaunch
             avianz = None
             if task == 1:
-                from src.ui import manual_interface
+                from avianz.src.ui import manual_interface
                 # Loads config from file
                 avianz = manual_interface.ManualInterface(configdir=configdir, firstFile=_prev_audio_file, on_ready=_save_preset)
                 # avianz = manual_interface.ManualInterface(configdir=configdir)
             elif task==2:
-                from src.ui import batch_interface
+                from avianz.src.ui import batch_interface
                 avianz = batch_interface.BatchInterface(configdir=configdir)
             elif task==3:
-                from src.ui import review_interface
+                from avianz.src.ui import review_interface
                 avianz = review_interface.ReviewInterface(configdir=configdir)
             elif task==4:
-                from src.ui import split_interface
+                from avianz.src.ui import split_interface
                 avianz = split_interface.SplitData()
 
             # catch bad initialiation
@@ -366,10 +371,17 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
                 task = 4
 
 
-try:
-    mainlauncher()
-except Exception:
-    import traceback
-    print(traceback.format_exc())
-    input("Encountered error. Report it with the text above to AviaNZ team at www.avianz.net.\nPress ENTER to exit")
-    raise
+def main():
+    """Entry point for the `avianz` console command, `python -m avianz` and `python AviaNZ.py`."""
+    try:
+        mainlauncher()
+    except Exception:
+        import traceback
+        print(traceback.format_exc())
+        input("Encountered error. Report it with the text above to AviaNZ team at www.avianz.net.\nPress ENTER to exit")
+        raise
+
+
+# guarded so that importing avianz.AviaNZ (console script, python -m avianz) does not launch twice
+if __name__ == "__main__":
+    main()

@@ -32,17 +32,17 @@ from pyqtgraph.dockarea import Dock, DockArea
 import pyqtgraph as pg
 
 from avianz.src.core import config_loader, signal_proc
-from src.utils.exceptions import GentleExitException
+from avianz.src.utils.exceptions import GentleExitException
 from avianz.src.core import spectrogram
 from avianz.src.core import annotation
 from avianz.src.core import excel_export
-from src.ui.components.buttons_and_controls import MainPushButton
-from src.ui.components.popups import MessagePopup
-from src.ui.components.file_list import LightedFileList
-from src.ui.dialogs.human_classify_batch import HumanClassify2
-from src.ui.dialogs.human_classify_single import HumanClassify1
-from src.ui.dialogs.number_copies import GetNumberCopiesPlus
-from src.ui.colourMaps import colourMaps
+from avianz.src.ui.components.buttons_and_controls import MainPushButton
+from avianz.src.ui.components.popups import MessagePopup
+from avianz.src.ui.components.file_list import LightedFileList
+from avianz.src.ui.dialogs.human_classify_batch import HumanClassify2
+from avianz.src.ui.dialogs.human_classify_single import HumanClassify1
+from avianz.src.ui.dialogs.number_copies import GetNumberCopiesPlus
+from avianz.src.ui.colourMaps import colourMaps
 
 import webbrowser, copy
 

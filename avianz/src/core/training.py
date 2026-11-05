@@ -35,11 +35,11 @@ import math
 
 from avianz.src.core import annotation
 from avianz.src.core import config_loader
-from src.models import model_trainer
-from src.models import augmentation
-from src.models import data_generator
-from src.models import model_loader
-from src.models import inference
+from avianz.src.models import model_trainer
+from avianz.src.models import augmentation
+from avianz.src.models import data_generator
+from avianz.src.models import model_loader
+from avianz.src.models import inference
 from avianz.src.core import wavelet_segment
 from avianz.src.core.batch_processor import BatchProcessor, BatchProcessorCallbacks
 

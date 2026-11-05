@@ -27,11 +27,11 @@ from PyQt6.QtCore import QPointF, QTime, Qt, QSize, QTimer
 import pyqtgraph as pg
 
 import numpy as np
-from src.ui.colourMaps import colourMaps
-from src.ui.components.audio_player import ControllableAudio
-from src.ui.components.buttons_and_controls import BrightContrVol
-from src.ui.components.layout_widgets import PartlyResizableGLW
-from src.ui.components.species_menus import BatSelectionMenu, BirdSelectionMenu
+from avianz.src.ui.colourMaps import colourMaps
+from avianz.src.ui.components.audio_player import ControllableAudio
+from avianz.src.ui.components.buttons_and_controls import BrightContrVol
+from avianz.src.ui.components.layout_widgets import PartlyResizableGLW
+from avianz.src.ui.components.species_menus import BatSelectionMenu, BirdSelectionMenu
 
 import copy
 

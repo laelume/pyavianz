@@ -196,10 +196,12 @@ AVIANZ_PROGRESS = re.compile(r"\*\*\* Processing file (\d+) / (\d+)")
 def run_avianz(audio_dir, annot_dir, args, log_file, on_file=None):
     """Run AviaNZ batch mode; on_file(files_done, files_total) is called as it progresses."""
     env = dict(os.environ)
-    repo = os.path.dirname(args.avianz_dir)
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [repo, args.avianz_dir, env.get("PYTHONPATH")]))
+    # run as a package (python -m avianz): only the repository root needs to be importable,
+    # so this works without pip-installing AviaNZ (and its GUI dependencies) on the cluster
+    repo = os.path.dirname(os.path.abspath(args.avianz_dir))
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, [repo, env.get("PYTHONPATH")]))
     env["PYTHONIOENCODING"] = "utf-8"
-    cmd = [args.python, "AviaNZ.py", "-c", "-b", "-d", audio_dir, "-r", args.recogniser,
+    cmd = [args.python, "-m", "avianz", "-c", "-b", "-d", audio_dir, "-r", args.recogniser,
            "-asd", annot_dir, "--gpu" if args.gpu else "--no-gpu"]
     if args.wind:
         cmd.append("-w")

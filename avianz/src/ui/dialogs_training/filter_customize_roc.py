@@ -24,14 +24,14 @@ import json
 
 from PyQt6.QtGui import QIcon, QValidator
 
-from src.ui.components.validators import FiltValidator
+from avianz.src.ui.components.validators import FiltValidator
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QLabel, QSlider, QPushButton, QListWidget, QListWidgetItem, QComboBox, QDialog, QLineEdit, QVBoxLayout, QHBoxLayout, QRadioButton, QGridLayout, QWidget, QAbstractItemView
 
 import pyqtgraph as pg
 
 import numpy as np
-from src.ui.dialogs_training.roc_canvas import ROCCanvas
+from avianz.src.ui.dialogs_training.roc_canvas import ROCCanvas
 from avianz.src.core import config_loader
 
 
