@@ -1,0 +1,99 @@
+CHANGE.log
+==========
+
+Running log of fixes to the pythonic AviaNZ port (branch pyavianz), newest first.
+Longer-form history: Changelog.md (AviaNZ) and hpc/CHANGES.md (avianz_hpc port).
+
+
+2026-11-05  commits 3a96c3be, 6383739c, ca330b81, 9316b02f
+-----------------------------------------------------------
+
+PACKAGING / IMPORTS (3a96c3be)
+
+* AviaNZ now imports itself one way only: absolute `avianz.src...` / `avianz.ext...`.
+  ~100 bare `from src...` / `from ext import` lines in 22 files were rewritten.
+  Before, running as a script could load the same module twice (`src.core.x` and
+  `avianz.src.core.x`), each with its own state.
+* pyproject.toml: package discovery searches from the repo root and installs only
+  `avianz` (previously `where = ["avianz"]` installed `src`, `Config`, `Filters`,
+  `hooks`, `ext` as separate top-level packages and not `avianz` itself). Added
+  package-data for Config/, Filters/, ext/*.pyd|*.so, src/data/, src/resources/.
+  Requires setuptools >= 64.
+* `avianz` console command now points to `avianz.AviaNZ:main`. The launch code in
+  AviaNZ.py is wrapped in `main()` and guarded by `if __name__ == "__main__"`, so
+  importing the module no longer launches AviaNZ.
+* New avianz/__main__.py: `python -m avianz [options]` (same options as `avianz`).
+* avianz/__init__.py no longer imports Config, Docs, ext, Filters, hooks, src.
+* Added empty __init__.py to src/ui/colourMaps, components, dialogs,
+  dialogs_training, so a regular (non-editable) `pip install .` includes the GUI.
+* Running `python avianz/AviaNZ.py` directly now needs the package installed
+  (`pip install -e .`); use `avianz ...` or `python -m avianz ...` instead.
+
+AviaNZ.py (3a96c3be)
+
+* `-r` is a tuple since it accepts multiple recognisers: training (`-t`) and
+  testing (`-u`) now take exactly one `-r` and pass the name, not the tuple
+  (both were always failing validation).
+* Batch mode with no `-r` reports the error again (`all()` of an empty tuple was True).
+* Config is reloaded after the default is restored, fixing a NameError in GUI mode
+  on first run or with a corrupt AviaNZconfig.txt.
+* Bundled Filters/ may use subfolders; files are copied flat into the user's
+  Filters folder (where filters(), NN model/ROC lookups and the Filter Manager look).
+  Same file name in two subfolders: first in sorted order wins, with a warning.
+  `__pycache__` and `Filters/__init__.py` are skipped.
+
+MODEL LOADING
+
+* 6383739c  src/models/model_loader.py: full-model .pth files pickled under the old
+  module path `src.models.tf_to_torch_converter` (Kiwi (Nth Is Brown), Kiwi (Great
+  Spotted), Kiwi (Little Spotted)_21-13-34) load again; the unpickler maps `src.*`
+  to `avianz.src.*`. Symptom fixed: "Error loading model ...: No module named 'src'",
+  "Loaded NN models: []".
+* ca330b81  src/models/tf_to_torch_converter.py: `h5py` is imported only when
+  converting a TensorFlow .h5 model, so loading a .pth needs no h5py. h5py is still
+  needed for recognisers without a .pth (Bittern, Kiwi (Tokoeka Fiordland),
+  Morepork, NZ Bats_NP).
+
+CPU THREADS (9316b02f)
+
+* src/models/gpu_config.py: new `available_cpu_count()` = OMP_NUM_THREADS if set,
+  else CPUs in the process affinity mask (Slurm allocation), else os.cpu_count().
+  `configure_cpu_threads()` and inference.generate_features_threaded() use it
+  instead of os.cpu_count().
+  Symptom fixed on Rāpoi AMD nodes (256 cores): "DEBUG: torch cpu thread count set
+  to 256" then "DefaultCPUAllocator: can't allocate memory ... Error code 12" at
+  the first NN segment, with MaxRSS only ~275 MB. On Rāpoi `--mem` also sets
+  `ulimit -v`, and 256 threads' reserved memory exceeded it.
+
+HPC (3a96c3be)
+
+* hpc/solar/solar_survey.py runs `python -m avianz ...` with only the repo root on
+  PYTHONPATH (was `python AviaNZ.py` with repo root + avianz/).
+* hpc/avianz_hpc/_avianz.py and hpc/recogniser/train_recogniser.py add only the
+  repo root to sys.path.
+* hpc/avianz_hpc/core/model_trainer.py: `from models import GradientReversalLayer`
+  -> `from avianz_hpc.core.models import ...` (DANN with AST would have crashed).
+
+DOCS (3a96c3be)
+
+* README.md: CLI examples use `avianz ...` / `python -m avianz ...`.
+
+KNOWN ISSUES / NOT YET DONE
+
+* `-s` / `-z` (cheatsheet, Zooniverse) crash: `avianz.src.ui.AviaNZ_manual_GUI` does
+  not exist; `manual_interface.ManualInterface` takes the same arguments.
+* Icon path `AviaNZ.ico` vs file `Avianz.ico` (fails on case-sensitive file systems).
+* Missing files: Filters/NZ Bats.json (NZ Bats NN cannot load), and
+  src/resources/images/volume-mute.png.
+* `torch` and `spectrum` are used but not listed in pyproject.toml / requirements.txt.
+* avianz/build_executable.py (upstream cx_Freeze script) cannot build this code.
+* ext/ Cython modules are committed only as Windows/Python 3.10 builds; on Rāpoi build
+  them in the job's venv: `cd ~/avianz/avianz/ext && python setup.py build_ext -i`
+  (on a `parallel` compute node). Not yet in the HPC docs.
+* Default Config/AviaNZconfig.txt has "previousMode": 1, so a fresh install skips
+  the start screen.
+* A single failed file stops a whole batch run ("Analysis failed") instead of being
+  skipped.
+* Rāpoi jobs: also set OMP_NUM_THREADS / MKL_NUM_THREADS / OPENBLAS_NUM_THREADS /
+  NUMBA_NUM_THREADS to the CPUs requested and MALLOC_ARENA_MAX=2 (e.g. in
+  ~/avianz_env.sh); not yet in hpc/ docs or sbatch scripts.
