@@ -20,7 +20,6 @@
 
 import torch
 import torch.nn as nn
-import h5py
 import json
 import numpy as np
 
@@ -165,7 +164,11 @@ class TFtoPyTorchConverter:
     def _load_weights(self, model):
         if not self.h5_path:
             return
-        
+
+        # imported here, not at module level: this module is also imported just to unpickle
+        # full-model .pth files (e.g. 'Kiwi (Nth Is Brown).pth'), which needs no h5py
+        import h5py
+
         with h5py.File(self.h5_path, 'r') as h5file:
             # Detect format
             weights_format = self._detect_weights_format(h5file)
