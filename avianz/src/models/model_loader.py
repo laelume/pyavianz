@@ -28,6 +28,29 @@
 import torch
 import json
 import os
+import pickle
+import types
+
+
+class _LegacyModulePathUnpickler(pickle.Unpickler):
+    """Unpickler that maps the old bare module path ``src.*`` to ``avianz.src.*``.
+
+    Full-model .pth files saved before the package used absolute imports (e.g. the bundled
+    'Kiwi (Nth Is Brown).pth') store their class as ``src.models.tf_to_torch_converter.X``.
+    ``src`` is no longer a top-level module, so without this mapping they fail with
+    "No module named 'src'".
+    """
+
+    def find_class(self, module, name):
+        if module == "src" or module.startswith("src."):
+            module = "avianz." + module
+        return super().find_class(module, name)
+
+
+# torch.load(pickle_module=...) subclasses pickle_module.Unpickler, so pass a pickle look-alike
+_legacy_pickle = types.ModuleType("avianz_legacy_pickle")
+_legacy_pickle.__dict__.update({k: v for k, v in pickle.__dict__.items() if not k.startswith("__")})
+_legacy_pickle.Unpickler = _LegacyModulePathUnpickler
 
 
 def loadModel(nn_name, dirnn):
@@ -47,8 +70,9 @@ def loadModel(nn_name, dirnn):
     # Priority 1: Load native PyTorch model
     if os.path.isfile(pth_path):
         print(f"Loading PyTorch model: {nn_name}.pth")
-        loaded = torch.load(pth_path, map_location='cpu', weights_only=False)
-        
+        loaded = torch.load(pth_path, map_location='cpu', weights_only=False,
+                            pickle_module=_legacy_pickle)
+
         if hasattr(loaded, 'eval'):
             loaded.eval()
             return loaded
