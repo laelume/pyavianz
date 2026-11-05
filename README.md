@@ -2,8 +2,8 @@
 
 0>0
 
-## Welcome to the Pythonically packaged version of Avianz!  
-This fork lets you interact directly with Avianz via API-like calls to make your life easier, or maybe harder. 
+## Welcome to the Pythonically packaged version of Avianz
+This fork lets you interact directly with Avianz via pythonic API-like calls to make your life easier, or maybe harder. 
 
 ## Launch avianz with a single keyword from the terminal (requires package install)
 ```

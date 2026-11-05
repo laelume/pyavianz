@@ -1,7 +1,7 @@
 
 # Version 3.5 09/10/25
-# Authors: Stephen Marsland, Nirosha Priyadarshani, Julius Juodakis, Virginia Listanti, Giotto Frean, Ashlae Blum(e)
-# Updated June 2026 laelume aka Ashlae Blum(e)
+# Authors: Stephen Marsland, Nirosha Priyadarshani, Julius Juodakis, Virginia Listanti, Giotto Frean
+# Updated June 2026 laelume aka Ashlae Blum
 
 #    AviaNZ bioacoustic analysis program
 #    Copyright (C) 2017--2025
@@ -143,6 +143,9 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
             print("ERROR: failed to copy essential config files")
             print(e)
             raise
+        # reload the restored default: `config` is unset if loading failed (missing or corrupt
+        # file, e.g. first run) and stale if validation failed, but GUI mode reads previousMode/File from it
+        config = confloader.config(os.path.join(configdir, "AviaNZconfig.txt"))
 
     # check and if needed copy any other necessary files
     necessaryFiles = ["ListCommonBirds.txt", "ListDOCBirds.txt", "ListBats.txt", "LearningParams.txt", "ListKnownCalls.txt", "Freebird_species_list.xlsx"]
@@ -197,7 +200,8 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
             from src.cli.batch_cli import run_cli_batch
             # if os.path.isdir(sdir1) and recogniser in confloader.filters(filterdir).keys():
             # Added multi-species filter inclusion
-            if os.path.isdir(sdir1) and all(r in confloader.filters(filterdir).keys() for r in recogniser):
+            # recogniser is a tuple; an empty one (no -r given) must fail, as all() of nothing is True
+            if os.path.isdir(sdir1) and recogniser and all(r in confloader.filters(filterdir).keys() for r in recogniser):
 
                 wind_str = "OLS wind filter (recommended)" if wind else "None"
 
@@ -241,21 +245,25 @@ def mainlauncher(cli, cheatsheet, zooniverse, infile, imagefile, batchmode, trai
                 raise
         elif training:
             from avianz.src.core import training
-            if os.path.isdir(sdir1) and os.path.isdir(sdir2) and recogniser in confloader.filters(filterdir).keys() and width>0:
-                training = training.NNTrain(configdir,filterdir,sdir1,sdir2,recogniser,width,CLI=True)
+            # -r is multiple=True (a tuple); training takes exactly one recogniser
+            rec = recogniser[0] if len(recogniser) == 1 else None
+            if os.path.isdir(sdir1) and os.path.isdir(sdir2) and rec in confloader.filters(filterdir).keys() and width>0:
+                training = training.NNTrain(configdir,filterdir,sdir1,sdir2,rec,width,CLI=True)
                 training.cliTrain()
                 print("Training complete, closing AviaNZ")
             else:
-                print("ERROR: valid input dirs (-d and -e) and recogniser name (-r) are essential for training")
+                print("ERROR: valid input dirs (-d and -e) and exactly one recogniser name (-r) are essential for training")
                 raise
         elif testing:
             from avianz.src.core import training
             filts = confloader.filters(filterdir)
-            if os.path.isdir(sdir1) and recogniser in filts:
-                testing = training.NNTest(sdir1, filts[recogniser], recogniser, configdir,filterdir,CLI=True)
+            # -r is multiple=True (a tuple); testing takes exactly one recogniser
+            rec = recogniser[0] if len(recogniser) == 1 else None
+            if os.path.isdir(sdir1) and rec in filts:
+                testing = training.NNTest(sdir1, filts[rec], rec, configdir,filterdir,CLI=True)
                 print("Testing complete, closing AviaNZ")
             else:
-                print("ERROR: valid input dir (-d) and recogniser name (-r) are essential for training")
+                print("ERROR: valid input dir (-d) and exactly one recogniser name (-r) are essential for testing")
                 raise
         else:
             if (cheatsheet or zooniverse) and isinstance(infile, str):
