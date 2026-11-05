@@ -53,13 +53,14 @@ def generate_features_threaded(segment_args, feature_fn, max_workers=None):
     feature_fn: callable performing the CPU-bound feature generation for a single segment
                 (e.g. PostProcess.generate_nn_features)
     max_workers: worker count; falls back to gpu_config.CPU_THREAD_COUNT, then
-                 os.cpu_count(), keeping this pool's size consistent with the
+                 gpu_config.available_cpu_count() (CPUs allocated to this process, not the
+                 whole machine), keeping this pool's size consistent with the
                  thread count set for torch's own intra-op parallelism
 
     Order of results matches segment_args (uses pool.map rather than as-completed), which
     keeps downstream indexing against the caller's segment list aligned.
     """
-    workers = max_workers or gpu_config.CPU_THREAD_COUNT or os.cpu_count() or 1
+    workers = max_workers or gpu_config.CPU_THREAD_COUNT or gpu_config.available_cpu_count()
     with ThreadPoolExecutor(max_workers=workers) as pool:
         results = list(pool.map(lambda args: feature_fn(*args), segment_args))
     return results

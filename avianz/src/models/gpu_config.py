@@ -17,7 +17,7 @@ import sys
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
 VERBOSE = False            # toggle verbose debug logging on/off
-CPU_THREAD_COUNT = None    # None, falls back to os.cpu_count() at runtime
+CPU_THREAD_COUNT = None    # None, falls back to available_cpu_count() at runtime (allocated CPUs, not all cores)
 
 INSTALL_MODE = os.environ.get("AVIANZ_INSTALL_MODE", "auto")
 # INSTALL_MODE sets which install-time expectation is checked at runtime:
@@ -168,14 +168,36 @@ def configure_gpu_memory(model=None, verbose=None, useGpu=True):
     return device
 
 
+def available_cpu_count():
+    """ Number of CPUs this process may actually use.
+
+    os.cpu_count() is every core on the machine (256 on a Rāpoi AMD node), not what a Slurm
+    job was allocated; sizing thread pools from it makes torch start hundreds of threads,
+    whose reserved memory exceeds the job's --mem (which on Rāpoi also caps virtual memory)
+    and fails with "DefaultCPUAllocator: can't allocate memory".
+    Order: OMP_NUM_THREADS if set, then the CPUs in this process's affinity mask
+    (what Slurm/taskset allow), then os.cpu_count().
+    """
+    env = os.environ.get("OMP_NUM_THREADS", "").strip()
+    if env.isdigit() and int(env) > 0:
+        return int(env)
+    if hasattr(os, "process_cpu_count"):  # Python 3.13+
+        n = os.process_cpu_count()
+        if n:
+            return n
+    if hasattr(os, "sched_getaffinity"):  # Linux
+        return len(os.sched_getaffinity(0)) or 1
+    return os.cpu_count() or 1
+
+
 def configure_cpu_threads(num_threads=None):
     """ Set the number of CPU threads torch uses for intra-op parallelism.
 
     Applies on the cpu-only fallback path, and also alongside GPU inference for any
     CPU-bound pre/post-processing torch ops that run outside the model forward pass.
-    Falls back to os.cpu_count() if num_threads is not given and CPU_THREAD_COUNT is unset.
+    Falls back to available_cpu_count() if num_threads is not given and CPU_THREAD_COUNT is unset.
     """
-    threads = num_threads or CPU_THREAD_COUNT or os.cpu_count() or 1
+    threads = num_threads or CPU_THREAD_COUNT or available_cpu_count()
     torch.set_num_threads(threads)
     logger.debug("torch cpu thread count set to %d", threads)
 

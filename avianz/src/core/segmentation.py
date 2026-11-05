@@ -69,7 +69,7 @@ FIR_COEFFICIENTS = [
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
 VERBOSE = True          # toggle verbose debug logging on/off
-NN_MAX_WORKERS = 4      # None: falls back to os.cpu_count() at runtime, inside
+NN_MAX_WORKERS = 4      # None: falls back to gpu_config.available_cpu_count() at runtime, inside
                         # generate_features_threaded(); controls thread pool size for
                         # the CPU-bound feature-generation step in NN(). GPU predict_batch
                         # calls remain single-threaded intentionally, since concurrent
